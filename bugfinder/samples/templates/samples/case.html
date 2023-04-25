@@ -1,0 +1,22 @@
+{% if failed_case %}
+    <ul>
+    <li>function_name: {{ failed_case.function_name }} </li>
+    <li>function_basic_block_count: {{ failed_case.function_basic_block_count }} </li>
+    <li>function_size: {{ failed_case.function_size }} </li>
+    <li>function_arch: {{ failed_case.function_arch }} </li>
+    <li>function_platform: {{ failed_case.function_platform }} </li>
+    <li>sample_hash: {{ failed_case.sample_hash }} </li>
+    <li>sample_name: {{ failed_case.sample_name }} </li>
+    <li>dewolf_options: {{ failed_case.dewolf_options }} </li>
+    <li>dewolf_current_commit: {{ failed_case.dewolf_current_commit }} </li>
+    <li>binaryninja_version: {{ failed_case.binaryninja_version }} </li>
+    <li>dewolf_exception: {{ failed_case.dewolf_exception }} </li>
+    <li>dewolf_traceback: {{ failed_case.dewolf_traceback }} </li>
+    <li>dewolf_decompilation_time: {{ failed_case.dewolf_decompilation_time }} </li>
+    <li>dewolf_undecorated_code: {{ failed_case.dewolf_undecorated_code }} </li>
+    <li>is_successful: {{ failed_case.is_successful }} </li>
+
+    </ul>
+{% else %}
+    <p>error</p>
+{% endif %}
