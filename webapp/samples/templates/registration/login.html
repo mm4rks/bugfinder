@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container pt-5">
+    <div class="row">
+        <div class="col"></div>
+        <div class="col-6">
+            <main class="form-signin w-100 m-auto">
+
+                {% if next %}
+                    {% if user.is_authenticated %}
+                    <p>Your account doesn't have access to this page. To proceed,
+                    please login with an account that has access.</p>
+                    {% else %}
+                    <p>Please login to see this page.</p>
+                    {% endif %}
+                {% endif %}
+
+                {% if form.errors %}
+                <p class="alert alert-danger">Your username and password did not match.</p>
+                {% endif %}
+                <form method="post" action="{% url 'login' %}">
+                    {% csrf_token %}
+                    <div class="form-floating">
+                        <input name="username" type="text" class="form-control" id="floatingInput" placeholder="name@example.com">
+                        <label for="floatingInput">Username</label>
+                    </div>
+                    <div class="form-floating">
+                        <input name="password" type="password" class="form-control" id="floatingPassword" placeholder="Password">
+                        <label for="floatingPassword">Password</label>
+                    </div>
+
+                    <button class="w-100 btn btn-lg btn-primary mt-2" type="submit" value="login">Sign in</button>
+                    <input type="hidden" name="next" value="{{ next }}">
+                </form>
+            </main>
+        </div>
+        <div class="col"></div>
+    </div>
+</div>
+{% endblock content %}
