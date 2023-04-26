@@ -2,41 +2,78 @@
 
 {% block content %}
 {% if failed_case %}
-<div>
-    <h1>Sample</h1>
-    <ul>
-        <li><a href="#">{{ failed_case.sample_hash }}</a></li>
-        <li>{{ failed_case.function_platform }} </li>
-        <li>size</li>
-    </ul>
-</div>
+<div class="container">
 
-<div>
-    <h1>Error</h1>
-    <ul>
+  <div class="row">
+    <div class="eight columns">
+        <h4>{{ failed_case.dewolf_exception}}</h4>
+        <pre>
+        <code>
+        {{ failed_case.dewolf_traceback}}
+        </code>
+        </pre>
 
-    </ul>
-    <h2>How to reproduce</h2>
+        <h5>How to reproduce</h5>
+        <code>python decompily.py {{ failed_case.sample_hash }} {{ failed_case.function_name }} --debug</code>
+        </br>
         <a href="#">options.json</a>
-</div>
-<ul>
-    <li>function_name: {{ failed_case.function_name }} </li>
-    <li>function_basic_block_count: {{ failed_case.function_basic_block_count }} </li>
-    <li>function_size: {{ failed_case.function_size }} </li>
-    <li>function_arch: {{ failed_case.function_arch }} </li>
-    <li>function_platform: {{ failed_case.function_platform }} </li>
-    <li>sample_hash: {{ failed_case.sample_hash }} </li>
-    <li>sample_name: {{ failed_case.sample_name }} </li>
-    <li>dewolf_options: {{ failed_case.dewolf_options }} </li>
-    <li>dewolf_current_commit: {{ failed_case.dewolf_current_commit }} </li>
-    <li>binaryninja_version: {{ failed_case.binaryninja_version }} </li>
-    <li>dewolf_exception: {{ failed_case.dewolf_exception }} </li>
-    <li>dewolf_traceback: {{ failed_case.dewolf_traceback }} </li>
-    <li>dewolf_decompilation_time: {{ failed_case.dewolf_decompilation_time }} </li>
-    <li>dewolf_undecorated_code: {{ failed_case.dewolf_undecorated_code }} </li>
-    <li>is_successful: {{ failed_case.is_successful }} </li>
 
-</ul>
+        <h5>Affected Versions</h5>
+        Binaryninja Version: <code>{{ failed_case.binaryninja_version }}</code> 
+        </br>
+        dewolf Commit: <code>{{ failed_case.dewolf_current_commit }}</code> 
+
+    </div>
+    <div class="four columns">
+        <h5>Sample ({{ failed_case.function_platform }})</h5>
+        <div class="truncate">
+            <a href="#">{{ failed_case.sample_hash }}</a>
+        </div>
+        </br>
+        Function Name: <code>{{ failed_case.function_name }}</code>
+        </br>
+        Basic Blocks: {{ failed_case.function_basic_block_count }} 
+        
+
+    </div>
+  </div>
+
+{% if related_cases %}
+  <div class="row">
+  </div>
+
+  <div class="row">
+    <div class="twelve columns">
+        <h5>Related Cases</h5>
+
+        <table class="u-full-width">
+        <thead>
+            <tr>
+                <th>Sample</th>
+                <th>Case Size</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for related_case in related_cases %}
+            <tr class="clickable" onclick="window.location='{% url 'case' related_case.id %}';">
+                <td class="truncate">
+                    <code>
+                        {{ related_case.sample_hash }}
+                    </code>
+                </td>
+                <td>{{ related_case.function_basic_block_count }}</td>
+            </tr>
+            {% endfor %}
+            
+        </tbody>
+        </table>
+    </div>
+  </div>
+{% endif %}
+
+
+</div>
+
 {% else %}
 <p>error</p>
 {% endif %}

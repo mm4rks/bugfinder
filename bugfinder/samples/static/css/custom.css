@@ -1,0 +1,15 @@
+.truncate {
+  max-width: 180px;
+  width: 80%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+tr.clickable:hover {
+    background-color: #eef;
+    cursor: pointer;
+    width: 50px;
+}
+
+[data-href] { cursor: pointer; }

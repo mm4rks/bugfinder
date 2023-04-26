@@ -2,11 +2,30 @@
 
 {% block content %}
 {% if failed_cases %}
-    <ul>
-    {% for failed_case in failed_cases %}
-    <li><a href="{% url 'case' failed_case.id %}">{{ failed_case.function_name }}@{{ failed_case.sample_hash }}</a></li>
-    {% endfor %}
-    </ul>
+    <div>
+        <h1>Exceptions by smallest test case</h1>
+        <table class="u-full-width">
+        <thead>
+            <tr>
+                <th>Exception</th>
+                <th>Smallest Case (BB)</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for failed_case in failed_cases %}
+            <tr class="clickable" onclick="window.location='{% url 'case' failed_case.id %}';">
+                <td class="truncate">
+                    <code>
+                        {{ failed_case.dewolf_exception }}
+                    </code>
+                </td>
+                <td>{{ failed_case.function_basic_block_count }}</td>
+            </tr>
+            {% endfor %}
+            
+        </tbody>
+        </table>
+    </div>
 {% else %}
     <p>No samples are available.</p>
 {% endif %}

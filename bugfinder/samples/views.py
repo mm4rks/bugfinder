@@ -1,15 +1,18 @@
+from django.db.models import OuterRef, Subquery
 from django.http import Http404, HttpResponse
 from django.template import loader
+
 from .models import Sample
 
 
 def index(request):
-    # total_cases = Sample.objects.using("samples").count()
     failed_cases = Sample.objects.using("samples").filter(is_successful__startswith="0")
-    # output = f"{total_cases}:{total_fails}"
+    min_ids = failed_cases.filter(dewolf_exception=OuterRef("dewolf_exception"))\
+            .order_by("function_basic_block_count").values("id")
+    min_dewolf_exceptions = failed_cases.filter(id=Subquery(min_ids[:1]))
     template = loader.get_template("index.html")
     context = {
-            "failed_cases": failed_cases
+            "failed_cases": min_dewolf_exceptions
             }
     return HttpResponse(template.render(context, request))
 
@@ -25,8 +28,12 @@ def sample(request, sample_hash):
 #     pass
 
 def case(request, case_id):
+    dewolf_exception = Sample.objects.using("samples").get(id=case_id)
+    related_cases = Sample.objects.using("samples")\
+            .filter( dewolf_exception=dewolf_exception.dewolf_exception).exclude(id=case_id)
     context = {
-            "failed_case": Sample.objects.using("samples").get(id=case_id)
+            "failed_case": Sample.objects.using("samples").get(id=case_id),
+            "related_cases": related_cases
             }
     template = loader.get_template("case.html")
     return HttpResponse(template.render(context, request))
