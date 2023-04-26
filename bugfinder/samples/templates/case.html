@@ -5,7 +5,7 @@
 <div class="container">
 
   <div class="row">
-    <div class="eight columns">
+    <div class="col-8">
         <h4>{{ failed_case.dewolf_exception}}</h4>
         <pre>
         <code>
@@ -13,62 +13,63 @@
         </code>
         </pre>
 
+
+    </div>
+    <div class="col-4 text-truncate">
+        <h5>Sample ({{ failed_case.function_platform }})</h5>
+        <div>
+            <a href="#" style="max-width: 150px;" class="d-inline-block text-truncate">{{ failed_case.sample_hash }}</a>
+        </div>
+        </br>
+        Function Name: <code>{{ failed_case.function_name }}</code>
+        </br>
+        #Blocks: {{ failed_case.function_basic_block_count }} 
+        
+
+    </div>
+  </div>
+  <div class="row">
+      <div class="col-12">
         <h5>How to reproduce</h5>
         <code>python decompily.py {{ failed_case.sample_hash }} {{ failed_case.function_name }} --debug</code>
         </br>
         <a href="#">options.json</a>
 
-        <h5>Affected Versions</h5>
+        <h5 class="pt-3">Affected Versions</h5>
         Binaryninja Version: <code>{{ failed_case.binaryninja_version }}</code> 
         </br>
         dewolf Commit: <code>{{ failed_case.dewolf_current_commit }}</code> 
 
-    </div>
-    <div class="four columns">
-        <h5>Sample ({{ failed_case.function_platform }})</h5>
-        <div class="truncate">
-            <a href="#">{{ failed_case.sample_hash }}</a>
-        </div>
-        </br>
-        Function Name: <code>{{ failed_case.function_name }}</code>
-        </br>
-        Basic Blocks: {{ failed_case.function_basic_block_count }} 
-        
-
-    </div>
+      </div>
   </div>
 
 {% if related_cases %}
-  <div class="row">
-  </div>
+<div class="row pt-5">
+<div class="col-12">
+<h5>Related Cases</h5>
+<table class="table table-hover">
+    <thead>
+        <tr>
+            <th scope="col">Sample</th>
+            <th scope="col">Case Size</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for related_case in related_cases %}
+        <tr class="clickable" onclick="window.location='{% url 'case' related_case.id %}';">
+            <td class="truncate">
+                <code>
+                    {{ related_case.sample_hash }}
+                </code>
+            </td>
+            <td>{{ related_case.function_basic_block_count }}</td>
+        </tr>
+        {% endfor %}
 
-  <div class="row">
-    <div class="twelve columns">
-        <h5>Related Cases</h5>
-
-        <table class="u-full-width">
-        <thead>
-            <tr>
-                <th>Sample</th>
-                <th>Case Size</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for related_case in related_cases %}
-            <tr class="clickable" onclick="window.location='{% url 'case' related_case.id %}';">
-                <td class="truncate">
-                    <code>
-                        {{ related_case.sample_hash }}
-                    </code>
-                </td>
-                <td>{{ related_case.function_basic_block_count }}</td>
-            </tr>
-            {% endfor %}
-            
-        </tbody>
-        </table>
-    </div>
-  </div>
+    </tbody>
+</table>
+</div>
+</div>
 {% endif %}
 
 

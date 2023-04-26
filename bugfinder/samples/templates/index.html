@@ -2,19 +2,19 @@
 
 {% block content %}
 {% if failed_cases %}
-    <div>
-        <h1>Exceptions by smallest test case</h1>
-        <table class="u-full-width">
+    <div class="container">
+        <h3>Exceptions by smallest test case</h3>
+        <table class="table table-hover">
         <thead>
             <tr>
-                <th>Exception</th>
-                <th>Smallest Case (BB)</th>
+                <th scope="col">Exception</th>
+                <th scope="col">Smallest Case (BB)</th>
             </tr>
         </thead>
         <tbody>
             {% for failed_case in failed_cases %}
             <tr class="clickable" onclick="window.location='{% url 'case' failed_case.id %}';">
-                <td class="truncate">
+                <td>
                     <code>
                         {{ failed_case.dewolf_exception }}
                     </code>
