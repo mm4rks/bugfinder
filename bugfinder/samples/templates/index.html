@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+
+{% block content %}
+{% if failed_cases %}
+    <ul>
+    {% for failed_case in failed_cases %}
+    <li><a href="{% url 'case' failed_case.id %}">{{ failed_case.function_name }}@{{ failed_case.sample_hash }}</a></li>
+    {% endfor %}
+    </ul>
+{% else %}
+    <p>No samples are available.</p>
+{% endif %}
+{% endblock content %}

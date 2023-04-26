@@ -7,7 +7,7 @@ def index(request):
     # total_cases = Sample.objects.using("samples").count()
     failed_cases = Sample.objects.using("samples").filter(is_successful__startswith="0")
     # output = f"{total_cases}:{total_fails}"
-    template = loader.get_template("samples/index.html")
+    template = loader.get_template("index.html")
     context = {
             "failed_cases": failed_cases
             }
@@ -28,5 +28,5 @@ def case(request, case_id):
     context = {
             "failed_case": Sample.objects.using("samples").get(id=case_id)
             }
-    template = loader.get_template("samples/case.html")
+    template = loader.get_template("case.html")
     return HttpResponse(template.render(context, request))

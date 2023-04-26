@@ -1,5 +1,25 @@
+{% extends "base.html" %}
+
+{% block content %}
 {% if failed_case %}
+<div>
+    <h1>Sample</h1>
     <ul>
+        <li><a href="#">{{ failed_case.sample_hash }}</a></li>
+        <li>{{ failed_case.function_platform }} </li>
+        <li>size</li>
+    </ul>
+</div>
+
+<div>
+    <h1>Error</h1>
+    <ul>
+
+    </ul>
+    <h2>How to reproduce</h2>
+        <a href="#">options.json</a>
+</div>
+<ul>
     <li>function_name: {{ failed_case.function_name }} </li>
     <li>function_basic_block_count: {{ failed_case.function_basic_block_count }} </li>
     <li>function_size: {{ failed_case.function_size }} </li>
@@ -16,7 +36,8 @@
     <li>dewolf_undecorated_code: {{ failed_case.dewolf_undecorated_code }} </li>
     <li>is_successful: {{ failed_case.is_successful }} </li>
 
-    </ul>
+</ul>
 {% else %}
-    <p>error</p>
+<p>error</p>
 {% endif %}
+{% endblock content %}
