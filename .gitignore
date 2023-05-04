@@ -1,3 +1,10 @@
+# app data
+.env*
+!.env.dev
+*.txt
+*.zip
+samples.sqlite3
+
 # Django #
 *.log
 *.pot
@@ -8,7 +15,6 @@ media
 
 # Backup files # 
 *.bak
-
 
 # Installer logs 
 pip-log.txt 
@@ -26,7 +32,6 @@ coverage.xml
 *.cover 
 .hypothesis/
 
-
 # Environments 
 .env 
 .venv 
@@ -36,6 +41,3 @@ ENV/
 env.bak/ 
 venv.bak/
 
-
-# samples
-samples.sqlite3

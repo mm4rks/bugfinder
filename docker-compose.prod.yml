@@ -1,0 +1,40 @@
+version: '3.8'
+services:
+  web:
+    build: ./webapp
+    command: gunicorn bugfinder.wsgi --bind 0.0.0.0:8000
+    volumes:
+      - type: bind
+        source: ./data
+        target: /usr/src/app/data
+        read_only: true
+      - ./webapp/:/usr/src/app/
+      - static_volume:/usr/src/app/staticfiles
+    ports:
+      - 8000:8000
+    env_file:
+      - ./.env.prod
+  dewolf:
+    build: ./dewolf/repo
+    container_name: dewolf_container
+    command: tail -F keep_running
+    volumes:
+      - type: bind
+        source: ./data
+        target: /data
+        read_only: true
+       
+
+  nginx:
+    build: ./nginx
+    volumes:
+      - static_volume:/www/data/staticfiles
+    ports:
+      - 80:80
+    depends_on:
+      - web
+
+volumes:
+  static_volume:
+
+     

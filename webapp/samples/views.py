@@ -1,7 +1,11 @@
+import tempfile
+import pyminizip
+
 from django.db.models import Avg, Count, OuterRef, Subquery
-from django.http import Http404, HttpResponse
+from django.http import FileResponse, Http404, HttpResponse
 from django.template import loader
 from django.contrib.auth.decorators import login_required
+from django.conf import Path, settings
 
 from .models import Sample
 
@@ -46,13 +50,9 @@ def sample(request, sample_hash):
         raise Http404("Sample does not exist")
     return HttpResponse(output)
 
-# nginx:
-# location /protected/ {
-#   internal;
-#   alias   /usr/local/documents;
-# }
 @login_required
 def download_sample(request, sample_hash):
+
     def is_hex(value):
         """Fast check if hex for small strings (<100)"""
         try:
@@ -63,10 +63,15 @@ def download_sample(request, sample_hash):
 
     if not is_hex(sample_hash):
         raise Http404()
-    response = HttpResponse()
-    response["Content-Disposition"] = f"attachment; filename={sample_hash}"
-    response['X-Accel-Redirect'] = f"/protected/{sample_hash}"
-    return response
+
+    with tempfile.TemporaryDirectory() as tdir:
+        sample_file = Path(settings.SAMPLE_DIR) / sample_hash 
+        zip_path = Path(tdir) / f"{sample_hash}.zip"
+        try:
+            pyminizip.compress(sample_file.as_posix(), None, zip_path.as_posix(), settings.ZIP_PASSWORD, settings.ZIP_COMPRESSION_LEVEL)
+        except OSError:
+            raise Http404("sample does not exist (OSError)")
+        return FileResponse(open(zip_path, "rb"), as_attachment=True, filename=f"{sample_hash}.zip")
 
 
 @login_required
@@ -76,8 +81,3 @@ def dewolf_error(request, row_id):
     context = {"failed_case": Sample.objects.using("samples").get(id=row_id), "related_cases": related_cases}
     template = loader.get_template("dewolf_error.html")
     return HttpResponse(template.render(context, request))
-
-@login_required
-def download_json(request, row_id):
-    pass
-
