@@ -1,70 +1,70 @@
 {% extends "base.html" %}
-
 {% block content %}
-{% if dewolf_errors %}
-<div class="container">
-    <div class="row">
-        <div class="col-4"> 
-            <h3>Stats</h3>
-            <table class="table">
-                <thead></thead>
+    {% if dewolf_errors %}
+        <div class="container">
+            <div class="row">
+                <div class="col-4">
+                    <h3>Stats</h3>
+                    <table class="table">
+                        <thead>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <th scope="row">current version</th>
+                                <td>{{ stats.version }}</td>
+                            </tr>
+                            <tr>
+                                <th scope="row">samples</th>
+                                <td>{{ stats.samples }}</td>
+                            </tr>
+                            <tr>
+                                <th scope="row">functions</th>
+                                <td>{{ stats.functions }}</td>
+                            </tr>
+                            <tr>
+                                <th scope="row">errors</th>
+                                <td>{{ stats.errors }}</td>
+                            </tr>
+                            <tr>
+                                <th scope="row">&#8960; function size</th>
+                                <td>{{ stats.size_avg }}</td>
+                            </tr>
+                            <tr>
+                                <th scope="row">&#8960; decompilation time</th>
+                                <td>{{ stats.time_avg }}s</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="container">
+            <h3>dewolf errors</h3>
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th scope="col" class="w-75">Exception</th>
+                        <th scope="col">Size</th>
+                        <th scope="col">Count</th>
+                    </tr>
+                </thead>
                 <tbody>
-                    <tr>
-                        <th scope="row">Current version</th>
-                        <td>{{ stats.version }}</td>
-                    </tr>
-                    <tr>
-                        <th scope="row">Samples</th>
-                        <td>{{ stats.samples }}</td>
-                    </tr>
-                    <tr>
-                        <th scope="row">Functions</th>
-                        <td>{{ stats.functions }}</td>
-                    </tr>
-                    <tr>
-                        <th scope="row">Errors</th>
-                        <td>{{ stats.errors }}</td>
-                    </tr>
-                    <tr>
-                        <th scope="row">Avg. function size</th>
-                        <td>{{ stats.size_avg }} bb</td>
-                    </tr>
-                    <tr>
-                        <th scope="row">Avg. time</th>
-                        <td>{{ stats.time_avg }} s</td>
-                    </tr>
+                    {% for failed_case in dewolf_errors %}
+                        <tr class="clickable"
+                            onclick="window.location='{% url 'dewolf_error' failed_case.id %}';">
+                            <td>
+                                <code>
+                                    {{ failed_case.dewolf_exception }}
+                                </code>
+                            </td>
+                            <td>{{ failed_case.function_basic_block_count }}</td>
+                            <td>{{ failed_case.exception_count }}</td>
+                        </tr>
+                    {% endfor %}
                 </tbody>
             </table>
         </div>
-    </div>
-</div>
-    <div class="container">
-        <h3>dewolf errors</h3>
-        <table class="table table-hover">
-        <thead>
-            <tr>
-                <th scope="col" class="w-75">Exception</th>
-                <th scope="col">Size</th>
-                <th scope="col">Count</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for failed_case in dewolf_errors %}
-            <tr class="clickable" onclick="window.location='{% url 'dewolf_error' failed_case.id %}';">
-                <td>
-                    <code>
-                        {{ failed_case.dewolf_exception }}
-                    </code>
-                </td>
-                <td>{{ failed_case.function_basic_block_count }}</td>
-                <td>{{ failed_case.exception_count }}</td>
-            </tr>
-            {% endfor %}
-            
-        </tbody>
-        </table>
-    </div>
-{% else %}
-    <p>No samples are available.</p>
-{% endif %}
+    {% else %}
+        <p>No samples are available.</p>
+    {% endif %}
 {% endblock content %}

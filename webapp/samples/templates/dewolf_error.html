@@ -1,103 +1,112 @@
 {% extends "base.html" %}
-
 {% load encoding %}
-
 {% block content %}
-{% if failed_case %}
-<div class="container">
-
-  <div class="row">
-    <div class="col-8">
-        <h4>{{ failed_case.dewolf_exception}}</h4>
-        <pre>
-            <code>
-            {{ failed_case.dewolf_traceback}}
-            </code>
-        </pre>
-
-
-    </div>
-    <div class="col-4 text-truncate">
-        <h5>Sample ({{ failed_case.function_platform }})</h5>
-        <div>
-            <a href="{% url 'download_sample' failed_case.sample_hash %}" style="max-width: 150px;" class="d-inline-block text-truncate"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-download" viewBox="0 0 16 16">
-  <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"></path>
-  <path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"></path>
-</svg> {{ failed_case.sample_hash }}</a>
+    {% if failed_case %}
+        <div class="container">
+            <div class="row">
+                <div class="col-8">
+                    <h4>{{ failed_case.dewolf_exception }}</h4>
+                    <pre><code>
+{{ failed_case.dewolf_traceback}}
+            </code></pre>
+                </div>
+                <div class="col-4 text-truncate">
+                    <h5>Sample ({{ failed_case.function_platform }})</h5>
+                    <div>
+                        <a href="{% url 'download_sample' failed_case.sample_hash %}"
+                           style="max-width: 150px"
+                           class="d-inline-block text-truncate">
+                            <svg xmlns="http://www.w3.org/2000/svg"
+                                 width="16"
+                                 height="16"
+                                 fill="currentColor"
+                                 class="bi bi-download"
+                                 viewBox="0 0 16 16">
+                                <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z">
+                                </path>
+                                <path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z">
+                                </path>
+                            </svg>
+                        {{ failed_case.sample_hash }}</a>
+                    </div>
+                </br>
+                Function Name: <code>{{ failed_case.function_name }}</code>
+            </br>
+            #Blocks: {{ failed_case.function_basic_block_count }}
         </div>
-        </br>
-        Function Name: <code>{{ failed_case.function_name }}</code>
-        </br>
-        #Blocks: {{ failed_case.function_basic_block_count }} 
-        
-
     </div>
-  </div>
-  <div class="row">
-      <div class="col-12">
-        <h5>How to reproduce</h5>
-        <code>python decompily.py {{ failed_case.sample_hash }} {{ failed_case.function_name }} --debug</code>
+    <div class="row">
+        <div class="col-12">
+            <h5>How to reproduce</h5>
+            <code>python decompily.py {{ failed_case.sample_hash }} {{ failed_case.function_name }} --debug</code>
         </br>
         <div class="card mt-3">
             <div class="p-2">
                 <p>
-                <a class="btn btn-link" data-bs-toggle="collapse" href="#collapseExample" aria-expanded="false" aria-controls="collapseExample">&gt; options</a>
-                  <a class="" href="data:text/json;base64,{{ failed_case.dewolf_options|b64encode }}" download="config.json"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-download" viewBox="0 0 16 16">
-  <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"></path>
-  <path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"></path>
-</svg></a>
+                    <a class="btn btn-link"
+                       data-bs-toggle="collapse"
+                       href="#collapseExample"
+                       aria-expanded="false"
+                       aria-controls="collapseExample">&gt; options</a>
+                    <a href="data:text/json;base64,{{ failed_case.dewolf_options|b64encode }}"
+                       download="config.json">
+                        <svg xmlns="http://www.w3.org/2000/svg"
+                             width="16"
+                             height="16"
+                             fill="currentColor"
+                             class="bi bi-download"
+                             viewBox="0 0 16 16">
+                            <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z">
+                            </path>
+                            <path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z">
+                            </path>
+                        </svg>
+                    </a>
                 </p>
             </div>
             <div class="collapse" id="collapseExample">
-              <div class="card-body">
-                  <pre>
-                      <code>
-                          {{ failed_case.dewolf_options }}
-                      </code>
-                  </pre>
-              </div>
+                <div class="card-body">
+                    <pre><code>
+{{ failed_case.dewolf_options }}
+                      </code></pre>
+                </div>
             </div>
         </div>
         <h5 class="pt-3">Affected Versions</h5>
-        Binaryninja Version: <code>{{ failed_case.binaryninja_version }}</code> 
-        </br>
-        dewolf Commit: <code>{{ failed_case.dewolf_current_commit }}</code> 
-
-      </div>
-  </div>
-
+        Binaryninja Version: <code>{{ failed_case.binaryninja_version }}</code>
+    </br>
+    dewolf Commit: <code>{{ failed_case.dewolf_current_commit }}</code>
+</div>
+</div>
 {% if related_cases %}
-<div class="row pt-5">
-<div class="col-12">
-<h5>Related Cases</h5>
-<table class="table table-hover">
-    <thead>
-        <tr>
-            <th scope="col">Sample</th>
-            <th scope="col">Case Size</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for related_case in related_cases %}
-        <tr class="clickable" onclick="window.location='{% url 'dewolf_error' related_case.id %}';">
-            <td class="truncate">
-                <code>
-                    {{ related_case.sample_hash }}
-                </code>
-            </td>
-            <td>{{ related_case.function_basic_block_count }}</td>
-        </tr>
-        {% endfor %}
-
-    </tbody>
-</table>
-</div>
-</div>
+    <div class="row pt-5">
+        <div class="col-12">
+            <h5>Related</h5>
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th scope="col">Sample</th>
+                        <th scope="col">Size</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for related_case in related_cases %}
+                        <tr class="clickable"
+                            onclick="window.location='{% url 'dewolf_error' related_case.id %}';">
+                            <td class="truncate">
+                                <code>
+                                    {{ related_case.sample_hash }}
+                                </code>
+                            </td>
+                            <td>{{ related_case.function_basic_block_count }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
 {% endif %}
-
-
 </div>
-
 {% else %}
 <p>error</p>
 {% endif %}
