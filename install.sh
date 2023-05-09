@@ -1,6 +1,48 @@
 #!/bin/env bash
 
-DEWOLF_REPO=./dewolf/repo
+DEWOLF_REPO=$(pwd)/dewolf/repo
+
+# systemd service unit files
+worker_service_content="[Unit]
+Description=Bugfinder dewolf worker
+StartLimitIntervalSec=30
+StartLimitBurst=2
+
+[Service]
+ExecStart=$(pwd)/worker.sh
+WorkingDirectory=$(pwd)
+Restart=on-failure
+User=root
+
+[Install]
+WantedBy=multi-user.target"
+
+web_service_content="[Unit]
+Description=Bugfinder webapp
+After=network.target
+StartLimitIntervalSec=30
+StartLimitBurst=2
+
+[Service]
+ExecStart=$(pwd)/web.sh
+WorkingDirectory=$(pwd)
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target"
+
+install_service () {
+    echo "$worker_service_content" | sudo tee "/etc/systemd/system/bugfinder_worker.service" > /dev/null
+    # echo "$web_service_content" | sudo tee "/etc/systemd/system/bugfinder_web.service" > /dev/null
+    sudo systemctl daemon-reload
+    sudo systemctl enable "bugfinder_worker"
+    sudo systemctl start "bugfinder_worker"
+    sudo systemctl status "bugfinder_worker"
+    # sudo systemctl enable "bugfinder_web"
+    # sudo systemctl start "bugfinder_web"
+    # sudo systemctl status "bugfinder_web"
+}
+
 
 set -o pipefail
 set -o errexit
@@ -9,7 +51,7 @@ display_help() {
     echo "Usage: install.sh [function]"
     echo "Functions:"
     echo "  dev : fetch dewolf and build images (development)"
-    echo "  dev : fetch dewolf and build images (production)"
+    echo " prod : fetch dewolf and build images (production)"
 }
 
 error() {
@@ -32,6 +74,8 @@ setup_dewolf_repo () {
 	git checkout issue-179-_Stability_create_tooling_to_find_minimal_crashing_examples_on_corpus_of_test_binaries
 	git pull
 	popd
+    cp dewolf/license.txt ${DEWOLF_REPO}
+    cp dewolf/BinaryNinja.zip ${DEWOLF_REPO}
 }
 
 dev() {
@@ -43,19 +87,15 @@ dev() {
 }
 
 prod() {
-    local secret=$(cat /dev/urandom | tr -dc '[:print:]' | head -c 60)
-    echo "[+] create env file"
-    tee .env.prod <<EOF
-DJANGO_DEBUG=False
-SECRET_KEY=${secret}
-DJANGO_ALLOWED_HOSTS=localhost 127.0.0.1 [::1]
-EOF
-
-    echo "[+] building images for PRODUCTION"
+    ./generate_env.sh
     setup_dewolf_repo
-	sudo docker compose -f docker-compose.prod.yml build
-	sudo docker compose -f docker-compose.prod.yml run web python manage.py makemigrations
-	sudo docker compose -f docker-compose.prod.yml run web python manage.py migrate
+    echo "[+] building images for PRODUCTION"
+	sudo docker compose -f docker-compose.prod.yml --env-file .env.prod build
+	sudo docker compose -f docker-compose.prod.yml --env-file .env.prod run web python manage.py makemigrations
+	sudo docker compose -f docker-compose.prod.yml --env-file .env.prod run web python manage.py migrate
+	sudo docker compose -f docker-compose.prod.yml --env-file .env.prod run web python manage.py collectstatic
+    echo "[+] install services"
+    install_service
 }
 
 

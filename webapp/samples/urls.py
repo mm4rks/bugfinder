@@ -7,4 +7,5 @@ urlpatterns = [
     path("<str:sample_hash>/", views.sample, name="sample"),
     path("case/<int:row_id>/", views.dewolf_error, name="dewolf_error"),
     path("download/<str:sample_hash>/", views.download_sample, name="download_sample"),
+    path("debug/", views.debug, name="debug"),
 ]

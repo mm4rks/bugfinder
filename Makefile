@@ -1,18 +1,44 @@
-.PHONY: run dev prod run-prod
-
 .DEFAULT_GOAL := run
 
+.PHONY: run 
+ifdef PROD
 run:
-	sudo ./processor.sh dev
+	@echo "PROD"
+	sudo docker compose -f docker-compose.prod.yml --env-file .env.prod up
+else
+run:
+	@echo "DEV"
+	sudo docker compose --env-file .env.dev up
+endif
 
-run-prod:
-	sudo ./processor.sh prod
 
-dev:
-	./install.sh dev
+.PHONY: build
+ifdef PROD
+build:
+	@echo "PROD"
+	git pull
+	sudo docker compose -f docker-compose.prod.yml --env-file .env.prod build
+else
+build:
+	@echo "DEV"
+	git pull
+	sudo docker compose --env-file .env.dev build
+endif
 
-prod:
-	./install.sh prod
+.PHONY: update
+ifdef PROD
+update:
+	@echo "PROD"
+	git pull
+	sudo docker compose -f docker-compose.prod.yml --env-file .env.prod run web python manage.py makemigrations
+	sudo docker compose -f docker-compose.prod.yml --env-file .env.prod run web python manage.py migrate
+	sudo docker compose -f docker-compose.prod.yml --env-file .env.prod run web python manage.py collectstatic
+else
+update:
+	@echo "DEV"
+	git pull
+	sudo docker compose .env.dev run web python manage.py makemigrations
+	sudo docker compose .env.dev run web python manage.py migrate
+	sudo docker compose .env.dev run web python manage.py collectstatic
+endif
 
-# user:
-# 	sudo docker compose run web python manage.py createsuperuser

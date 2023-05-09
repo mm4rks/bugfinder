@@ -50,6 +50,11 @@ def sample(request, sample_hash):
         raise Http404("Sample does not exist")
     return HttpResponse(output)
 
+def debug(request):
+    template = loader.get_template("base.html")
+    context = {}
+    return HttpResponse(template.render(context, request))
+
 @login_required
 def download_sample(request, sample_hash):
 

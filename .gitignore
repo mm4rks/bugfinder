@@ -3,6 +3,8 @@
 !.env.dev
 *.txt
 *.zip
+*.crt
+*.key
 samples.sqlite3
 
 # Django #
