@@ -17,9 +17,10 @@ def index(request):
              "functions": Sample.objects.using("samples").count(), 
              "samples": Sample.objects.using("samples").values("sample_hash").distinct().count(), 
              "errors": failed_cases.count(),
-             "size_avg": round(Sample.objects.using("samples").aggregate(avg=Avg("function_basic_block_count"))["avg"], 4),
-             "time_avg": round(Sample.objects.using("samples").aggregate(avg=Avg("dewolf_decompilation_time"))["avg"], 4)
-
+             # "size_avg": round(Sample.objects.using("samples").aggregate(avg=Avg("function_basic_block_count"))["avg"], 4),
+             # "time_avg": round(Sample.objects.using("samples").aggregate(avg=Avg("dewolf_decompilation_time"))["avg"], 4)
+             "size_avg": -1,
+             "time_avg": -1,
              }
 
     subquery_exception_count = (
