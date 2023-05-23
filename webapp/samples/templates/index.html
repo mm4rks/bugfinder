@@ -10,28 +10,30 @@
                         </thead>
                         <tbody>
                             <tr>
-                                <th scope="row">current version</th>
-                                <td>{{ stats.version }}</td>
+                                <th scope="row" >commit</th>
+                                <td>
+                                    <code>{{ summary.dewolf_current_commit|truncatechars:8 }}</code>
+                                </td>
                             </tr>
                             <tr>
-                                <th scope="row">samples</th>
-                                <td>{{ stats.samples }}</td>
+                                <th scope="row">total functions</th>
+                                <td>{{ summary.total_functions }}</td>
                             </tr>
                             <tr>
-                                <th scope="row">functions</th>
-                                <td>{{ stats.functions }}</td>
+                                <th scope="row">total errors</th>
+                                <td>{{ summary.total_errors }}</td>
                             </tr>
                             <tr>
-                                <th scope="row">errors</th>
-                                <td>{{ stats.errors }}</td>
+                                <th scope="row">unique exceptions</th>
+                                <td>{{ summary.unique_exceptions }}</td>
                             </tr>
                             <tr>
-                                <th scope="row">&#8960; function size</th>
-                                <td>{{ stats.size_avg }}</td>
+                                <th scope="row">unique tracebacks</th>
+                                <td>{{ summary.unique_tracebacks }}</td>
                             </tr>
                             <tr>
                                 <th scope="row">&#8960; decompilation time</th>
-                                <td>{{ stats.time_avg }}s</td>
+                                <td>{{ summary.avg_dewolf_decompilation_time|floatformat:2 }}s</td>
                             </tr>
                         </tbody>
                     </table>
@@ -58,7 +60,7 @@
                                 </code>
                             </td>
                             <td>{{ failed_case.function_basic_block_count }}</td>
-                            <td>{{ failed_case.exception_count }}</td>
+                            <td>{{ failed_case.exception_count_pre_filter }}</td>
                         </tr>
                     {% endfor %}
                 </tbody>

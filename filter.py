@@ -10,7 +10,7 @@ from pandas import DataFrame, read_sql_query
 
 
 class DBFilter:
-    QUERY = f"SELECT * from dewolf WHERE is_successful = 0"
+    QUERY = f"SELECT * from dewolf"
 
     def __init__(self, df: DataFrame):
         self._summary = None
@@ -29,17 +29,27 @@ class DBFilter:
             df.to_sql(table_name, con, index=False, if_exists="replace")
 
     def _get_summary(self) -> DataFrame:
-        # current version 	TODO
-        # samples 	5
-        # functions 	11
-        # errors 	11
-        # ⌀ function size 	-1
-        # ⌀ decompilation time 	-1s
-        return DataFrame()
+        commit = self._df.dewolf_current_commit.loc[0]  # just take any commit for now
+        failed_runs = self._df[self._df.is_successful == 0]
+        summary = {
+            "id": 0,
+            "dewolf_current_commit": commit,
+            "avg_dewolf_decompilation_time": self._df.dewolf_decompilation_time.dropna().mean(),
+            "total_functions": len(self._df),
+            "total_errors": len(failed_runs),
+            "unique_exceptions": len(failed_runs.dewolf_exception.unique()),
+            "unique_tracebacks": len(failed_runs.dewolf_traceback.unique()),
+
+        }
+        return DataFrame(summary, index=[0])
 
     def _get_filtered(self) -> DataFrame:
+        """Filter dataset to contain 10 smallest cases per unique exception"""
         f = lambda x: x.nsmallest(10, "function_basic_block_count")
-        filtered_df = self._df.groupby("dewolf_exception").apply(f)
+        failed_runs = self._df[self._df.is_successful == 0]
+        exception_counts = failed_runs['dewolf_exception'].value_counts()
+        failed_runs['exception_count_pre_filter'] = failed_runs['dewolf_exception'].map(exception_counts)
+        filtered_df = failed_runs.groupby("dewolf_exception").apply(f)
         assert isinstance(filtered_df, DataFrame)
         return filtered_df.reset_index(drop=True)
 
@@ -56,7 +66,7 @@ class DBFilter:
         return self._filtered
 
     def write(self, file_path: Path):
-        # self._write_df_to_sqlite3(self.summary, file_path, "summary")
+        self._write_df_to_sqlite3(self.summary, file_path, "summary")
         self._write_df_to_sqlite3(self.filtered, file_path, "dewolf")
 
 

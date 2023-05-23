@@ -7,22 +7,14 @@ from django.template import loader
 from django.contrib.auth.decorators import login_required
 from django.conf import Path, settings
 
-from .models import Sample
+from .models import Sample, Summary
 
 
 @login_required
 def index(request):
+    summary = Summary.objects.using("samples").all().first()
     failed_cases = Sample.objects.using("samples").filter(is_successful=False)
-    stats = {"version": "TODO", 
-             "functions": Sample.objects.using("samples").count(), 
-             "samples": Sample.objects.using("samples").values("sample_hash").distinct().count(), 
-             "errors": failed_cases.count(),
-             # "size_avg": round(Sample.objects.using("samples").aggregate(avg=Avg("function_basic_block_count"))["avg"], 4),
-             # "time_avg": round(Sample.objects.using("samples").aggregate(avg=Avg("dewolf_decompilation_time"))["avg"], 4)
-             "size_avg": -1,
-             "time_avg": -1,
-             }
-
+    # note: in template we use exception_count_pre_filter
     subquery_exception_count = (
         failed_cases.filter(dewolf_exception=OuterRef("dewolf_exception"))
         .values("dewolf_exception")
@@ -38,7 +30,7 @@ def index(request):
         .order_by("-exception_count")
     )
     template = loader.get_template("index.html")
-    context = {"dewolf_errors": min_dewolf_exceptions, "stats": stats}
+    context = {"dewolf_errors": min_dewolf_exceptions, "summary": summary}
     return HttpResponse(template.render(context, request))
 
 

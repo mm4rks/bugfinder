@@ -8,6 +8,17 @@ from django.db import models
 #   * Remove `managed = False` lines if you wish to allow Django to create, modify, and delete the table
 # Feel free to rename the models, but don't rename db_table values or field names.
 
+class Summary(models.Model):
+    dewolf_current_commit = models.TextField(blank=True, null=True)  # This field type is a guess.
+    avg_dewolf_decompilation_time = models.FloatField(blank=True, null=True)  # This field type is a guess.
+    total_functions = models.IntegerField(blank=True, null=True)  # This field type is a guess.
+    total_errors = models.IntegerField(blank=True, null=True)  # This field type is a guess.
+    unique_exceptions = models.IntegerField(blank=True, null=True)  # This field type is a guess.
+    unique_tracebacks = models.IntegerField(blank=True, null=True)  # This field type is a guess.
+
+    class Meta:
+        managed = False
+        db_table = 'summary'
 
 class Sample(models.Model):
     function_name = models.TextField(blank=True, null=True)  # This field type is a guess.
@@ -23,6 +34,7 @@ class Sample(models.Model):
     dewolf_exception = models.TextField(blank=True, null=True)  # This field type is a guess.
     dewolf_traceback = models.TextField(blank=True, null=True)  # This field type is a guess.
     dewolf_decompilation_time = models.IntegerField(blank=True, null=True)  # This field type is a guess.
+    exception_count_pre_filter = models.IntegerField(blank=True, null=True)  # This field type is a guess.
     dewolf_undecorated_code = models.TextField(blank=True, null=True)  # This field type is a guess.
     is_successful = models.BooleanField(blank=True, null=True)  # This field type is a guess.
 
