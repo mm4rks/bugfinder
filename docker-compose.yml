@@ -12,11 +12,3 @@ services:
       - "127.0.0.1:8000:8000"
     env_file:
       - ./.env.dev
-  dewolf:
-    build: ./dewolf/repo
-    container_name: dewolf_container
-    command: tail -F keep_running
-    volumes:
-      - type: bind
-        source: ./data
-        target: /data

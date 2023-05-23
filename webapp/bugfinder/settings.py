@@ -86,7 +86,7 @@ DATABASES = {
     },
     "samples": {
         "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "data/samples.sqlite3",
+        "NAME": BASE_DIR / "data/filtered.sqlite3",
     }
 }
 
@@ -144,7 +144,7 @@ ZIP_PASSWORD = "infected"
 LOGGING_CONFIG = None
 
 # Get loglevel from env
-LOGLEVEL = os.getenv('DJANGO_LOGLEVEL', 'debug').upper()
+LOGLEVEL = os.getenv('DJANGO_LOGLEVEL', 'warning').upper()
 
 logging.config.dictConfig({
     'version': 1,

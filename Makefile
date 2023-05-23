@@ -42,3 +42,10 @@ update:
 	sudo docker compose .env.dev run web python manage.py collectstatic
 endif
 
+.PHONY: filter
+filter:
+	python filter.py -i data/samples.sqlite3 -o data/filtered.sqlite3
+
+.PHONY: dewolf
+dewolf:
+	@echo TODO
