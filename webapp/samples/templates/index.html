@@ -10,7 +10,7 @@
                         </thead>
                         <tbody>
                             <tr>
-                                <th scope="row" >commit</th>
+                                <th scope="row">commit</th>
                                 <td>
                                     <code>{{ summary.dewolf_current_commit|truncatechars:8 }}</code>
                                 </td>
@@ -37,6 +37,14 @@
                             </tr>
                         </tbody>
                     </table>
+                </div>
+                <div class="col-8">
+                    <div class="border rounded h-100 my-dropzone">
+                    </div>
+
+                    <script>
+                      const dropzone = new Dropzone("div.my-dropzone", { url: "/upload" });
+                    </script>
                 </div>
             </div>
         </div>
