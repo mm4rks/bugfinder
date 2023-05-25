@@ -6,6 +6,8 @@
 *.crt
 *.key
 samples.sqlite3
+webapp/data
+webapp/staticfiles
 
 .ipynb_checkpoints/
 
