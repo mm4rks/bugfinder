@@ -4,7 +4,7 @@ services:
     build: ./webapp
     user: ${UID}:${GID}
     # command: sh -c "while true; do nc -lk -v -p 8000 ;done"
-    command: gunicorn bugfinder.wsgi --bind 0.0.0.0:8000
+    command: gunicorn bugfinder.wsgi --workers=3 --bind 0.0.0.0:8000
     volumes:
       - type: bind
         source: ./data
