@@ -17,8 +17,7 @@ if [ ! -d "$DEWOLF_REPO" ]; then
 fi
 pushd $DEWOLF_REPO
 git fetch --all 
-# TODO change to main
-git checkout issue-179-_Stability_create_tooling_to_find_minimal_crashing_examples_on_corpus_of_test_binaries
+git checkout main
 git pull
 popd
 
