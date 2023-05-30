@@ -12,7 +12,6 @@ from .models import Sample, Summary
 
 @login_required
 def index(request):
-    summary = Summary.objects.using("samples").all().first()
     failed_cases = Sample.objects.using("samples").filter(is_successful=False)
     # note: in template we use exception_count_pre_filter
     subquery_exception_count = (
@@ -30,7 +29,7 @@ def index(request):
         .order_by("-exception_count")
     )
     template = loader.get_template("index.html")
-    context = {"dewolf_errors": min_dewolf_exceptions, "summary": summary}
+    context = {"dewolf_errors": min_dewolf_exceptions}
     return HttpResponse(template.render(context, request))
 
 
@@ -43,13 +42,17 @@ def sample(request, sample_hash):
         raise Http404("Sample does not exist")
     return HttpResponse(output)
 
-def debug(request):
-    template = loader.get_template("base.html")
-    context = {}
+@login_required
+def samples(request):
+    summary = Summary.objects.using("samples").all().first()
+    context = {"summary": summary}
+    template = loader.get_template("samples.html")
     return HttpResponse(template.render(context, request))
+
 
 @login_required
 def download_sample(request, sample_hash):
+    """Given sample hash, download zipped (and password protected) sample"""
 
     def is_hex(value):
         """Fast check if hex for small strings (<100)"""

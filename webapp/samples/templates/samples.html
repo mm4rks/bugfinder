@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block content %}
+        <div class="container">
+            <div class="row">
+                <div class="col-sm">
+                    <h3>Stats</h3>
+                    <table class="table">
+                        <thead>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <th scope="row">commit</th>
+                                <td>
+                                    <code>{{ summary.dewolf_current_commit|truncatechars:8 }}</code>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th scope="row">total functions</th>
+                                <td>{{ summary.total_functions }}</td>
+                            </tr>
+                            <tr>
+                                <th scope="row">total errors</th>
+                                <td>{{ summary.total_errors }}</td>
+                            </tr>
+                            <tr>
+                                <th scope="row">unique exceptions</th>
+                                <td>{{ summary.unique_exceptions }}</td>
+                            </tr>
+                            <tr>
+                                <th scope="row">unique tracebacks</th>
+                                <td>{{ summary.unique_tracebacks }}</td>
+                            </tr>
+                            <tr>
+                                <th scope="row">&#8960; decompilation time</th>
+                                <td>{{ summary.avg_dewolf_decompilation_time|floatformat:2 }}s</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="col-sm">
+                    <form action="/file-upload" class="dropzone border rounded mb-4 my-dropzone pe-auto">
+                        <div class="mb-3 fallback">
+                            <label for="formFile" class="form-label">File upload</label>
+                            <input class="form-control" type="file" id="formFile" multiple />
+                        </div>
+                    </form>
+                    <script>const dropzone = new Dropzone("form.my-dropzone", { url: "/upload" });</script>
+                </div>
+            </div>
+        </div>
+{% endblock content %}
