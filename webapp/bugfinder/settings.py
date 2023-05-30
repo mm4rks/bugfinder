@@ -130,6 +130,17 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+
+# email
+# EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_USE_TLS = True
+EMAIL_HOST = '128.7.3.5'
+EMAIL_PORT = 25
+DEFAULT_FROM_EMAIL = '"bugfinder" <noreply@caad.fkie.fraunhofer.de>'
+SERVER_EMAIL = DEFAULT_FROM_EMAIL
+EMAIL_SUBJECT_PREFIX = "[dewolf::bugfinder] "
+
 # redirects
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = "/accounts/login"
