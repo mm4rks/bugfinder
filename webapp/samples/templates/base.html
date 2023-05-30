@@ -12,7 +12,6 @@
         <script src="{% static 'js/bootstrap.bundle.js' %}"></script>
         <script src="{% static 'js/dropzone-min.js' %}"></script>
         <link rel="icon" type="image/png" href="{% static 'img/favicon.png' %}">
-
     </head>
     <body>
         <header class="p-3 mb-3 border-bottom">
@@ -30,17 +29,18 @@
                         <li>
                             <a href="{% url 'samples' %}" class="nav-link px-2 link-secondary">Samples</a>
                         </li>
-                        <!-- <li> -->
-                        <!--     <a href="#" class="nav-link px-2 link-body-emphasis"></a> -->
-                        <!-- </li> -->
                     </ul>
                     {% if user.is_authenticated %}
-                    <form class="col-12 col-lg-auto mb-3 mb-lg-0 me-lg-3" role="search">
-                        <input type="search"
-                               class="form-control"
-                               placeholder="Search..."
-                               aria-label="Search">
-                    </form>
+                        <a href="https://github.com/mm4rks/bugfinder/issues/new?assignees=&labels=feature-request&projects=&template=feature_request.yaml"
+                           class="text-decoration-none ms-3 badge rounded-pill bg-primary">Feature Request</a>
+                        <a href="https://github.com/mm4rks/bugfinder/issues/new?assignees=&labels=bug&projects=&template=bug_report.yaml"
+                           class="text-decoration-none mx-3 badge rounded-pill bg-danger">Bug Report</a>
+                        <form class="col-12 col-lg-auto mb-3 mb-lg-0 me-lg-3" role="search">
+                            <input type="search"
+                                   class="form-control"
+                                   placeholder="Search..."
+                                   aria-label="Search">
+                        </form>
                     {% endif %}
                     {% if user.is_authenticated %}
                         <a href="{% url 'logout' %}"
