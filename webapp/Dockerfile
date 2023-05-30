@@ -20,7 +20,7 @@ COPY . .
 RUN mkdir -p /usr/src/app/data && \
         chown -R django:django /usr/src/app/data && \
         chmod -R 755 /usr/src/app/data
-RUN mkdir -p /usr/src/app/staticfiles && \
+RUN mkdir -p /usr/src/app/staticfiles/{js,css,img} && \
         chown -R django:django /usr/src/app/staticfiles && \
         chmod -R 755 /usr/src/app/staticfiles
 
