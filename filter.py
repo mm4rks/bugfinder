@@ -55,7 +55,7 @@ class DBFilter:
         failed_runs["error_file_path"] = failed_runs["dewolf_traceback"].apply(self._get_last_file_path)
         failed_runs["error_line"] = failed_runs["dewolf_traceback"].apply(self._get_last_line_number)
         # case id: ExceptionType@file.py:42
-        failed_runs["case_id"] = (
+        failed_runs["case_group"] = (
             failed_runs["dewolf_exception"].str.split().str[0].str.strip(": ")
             + "@"
             + failed_runs["error_file_path"].str.split("/").str[-1]
