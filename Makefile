@@ -34,7 +34,8 @@ install: dewolf build
 	sudo chown -R $(USER_ID):$(GROUP_ID) data/
 	sudo docker compose $(COMPOSE_ARGS) run web python manage.py makemigrations
 	sudo docker compose $(COMPOSE_ARGS) run web python manage.py migrate
-	sudo docker compose $(COMPOSE_ARGS) run web python manage.py collectstatic
+	# TODO shared volume permissions
+	sudo docker compose $(COMPOSE_ARGS) run --user 0 web python manage.py collectstatic
 	sudo chown -R $(USER_ID):$(GROUP_ID) data/
 	./install_worker_service.sh
 
