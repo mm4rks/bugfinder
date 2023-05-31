@@ -39,29 +39,53 @@ class DBFilter:
             "total_errors": len(failed_runs),
             "unique_exceptions": len(failed_runs.dewolf_exception.unique()),
             "unique_tracebacks": len(failed_runs.dewolf_traceback.unique()),
-
         }
         return DataFrame(summary, index=[0])
 
     def _get_filtered(self) -> DataFrame:
-        """Filter dataset to contain 10 smallest cases per unique exception"""
+        """
+        Filter dataset to contain 10 smallest cases per unique exception AND traceback
+        generate case id for semantic grouping of similar errors. (e.g., ExceptionType@file.py:42)
+        """
         f = lambda x: x.nsmallest(10, "function_basic_block_count")
         failed_runs = self._df[self._df.is_successful == 0]
-        exception_counts = failed_runs['dewolf_exception'].value_counts()
-        failed_runs['exception_count_pre_filter'] = failed_runs['dewolf_exception'].map(exception_counts)
-        filtered_df = failed_runs.groupby("dewolf_exception").apply(f)
+        exception_counts = failed_runs["dewolf_exception"].value_counts()
+        failed_runs["exception_count_pre_filter"] = failed_runs["dewolf_exception"].map(exception_counts)
+        filtered_df = failed_runs.groupby(["dewolf_exception", "dewolf_traceback"]).apply(f)
+        failed_runs["error_file_path"] = failed_runs["dewolf_traceback"].apply(self._get_last_file_path)
+        failed_runs["error_line"] = failed_runs["dewolf_traceback"].apply(self._get_last_line_number)
+        # case id: ExceptionType@file.py:42
+        failed_runs["case_id"] = (
+            failed_runs["dewolf_exception"].str.split().str[0].str.strip(": ")
+            + "@"
+            + failed_runs["error_file_path"].str.split("/").str[-1]
+            + ":"
+            + failed_runs["error_line"]
+        )
         assert isinstance(filtered_df, DataFrame)
         return filtered_df.reset_index(drop=True)
 
+    @staticmethod
+    def _get_last_file_path(traceback: str) -> str:
+        """Extract the last file path contained in a Traceback"""
+        file_path, line, *_ = traceback.rpartition("File ")[-1].split(", ")
+        return file_path.strip('"')
+
+    @staticmethod
+    def _get_last_line_number(traceback: str) -> str:
+        """Return the line number (as str) from the last row of a Traceback"""
+        file_path, line, *_ = traceback.rpartition("File ")[-1].split(", ")
+        return line.lstrip("line ")
+
     @property
     def summary(self) -> DataFrame:
-        if not self._summary:
+        if self._summary is None:
             self._summary = self._get_summary()
         return self._summary
 
     @property
     def filtered(self) -> DataFrame:
-        if not self._filtered:
+        if self._filtered is None:
             self._filtered = self._get_filtered()
         return self._filtered
 
