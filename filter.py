@@ -10,7 +10,8 @@ from pandas import DataFrame, read_sql_query
 
 
 class DBFilter:
-    QUERY = f"SELECT * from dewolf"
+    QUERY = "SELECT * from dewolf"
+    SCHEMA = ""
 
     def __init__(self, df: DataFrame):
         self._summary = None
@@ -26,7 +27,7 @@ class DBFilter:
     @staticmethod
     def _write_df_to_sqlite3(df: DataFrame, database_path: Union[str, Path], table_name: str):
         with sqlite3.connect(database_path) as con:
-            df.to_sql(table_name, con, index=False, if_exists="replace")
+            df.to_sql(table_name, con, index=False, if_exists="append")
 
     def _get_summary(self) -> DataFrame:
         commit = self._df.dewolf_current_commit.loc[0]  # just take any commit for now
@@ -93,6 +94,27 @@ class DBFilter:
         self._write_df_to_sqlite3(self.summary, file_path, "summary")
         self._write_df_to_sqlite3(self.filtered, file_path, "dewolf")
 
+def print_sample_hashes(db_file: Path):
+    """Print all sample hashes contained in DB file"""
+    sample_hashes = set()
+    COLUMN = "sample_hash"
+    with sqlite3.connect(db_file) as con:
+        cursor =  con.cursor()
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
+        table_names = cursor.fetchall()
+        print("DBG", table_names)
+        for table in table_names:
+            table_name = table[0]
+            logging.info(f"read from {table_name}")
+            # Check if the column exists
+            cursor.execute(f"PRAGMA table_info({table_name});")
+            columns = {column[1] for column in cursor.fetchall()}
+            if COLUMN in columns:
+                cursor.execute(f"SELECT DISTINCT {COLUMN} FROM {table_name};")
+                sample_hashes.update(h[0] for h in cursor.fetchall())
+        cursor.close()
+    for s in sample_hashes:
+        print(s)
 
 def existing_file(path):
     """Check if the provided path is an existing file."""
@@ -105,12 +127,17 @@ def existing_file(path):
 def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Bug finding tool for dewolf decompiler")
     parser.add_argument("-i", "--input", required=True, type=existing_file, help="Path to SQLite file")
-    parser.add_argument("-o", "--output", required=True, type=Path, help="File path of filtered output (SQLite file)")
+    parser.add_argument("-o", "--output", default="filtered.sqlite3", type=Path, help="File path of filtered output (SQLite file)")
+    parser.add_argument("-l", "--list", action="store_true", help="List sample hashes contained in SQLite DB")
     parser.add_argument("--verbose", "-v", dest="verbose", action="count", help="Set logging verbosity (-vvv)", default=0)
     return parser.parse_args()
 
 
 def main(args: argparse.Namespace) -> int:
+    if args.list:
+        print_sample_hashes(args.input)
+        return 0
+    logging.info("filtering database")
     f = DBFilter.from_file(args.input)
     f.write(args.output)
     return 0
