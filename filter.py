@@ -102,7 +102,6 @@ def print_sample_hashes(db_file: Path):
         cursor =  con.cursor()
         cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
         table_names = cursor.fetchall()
-        print("DBG", table_names)
         for table in table_names:
             table_name = table[0]
             logging.info(f"read from {table_name}")
@@ -129,7 +128,8 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument("-i", "--input", required=True, type=existing_file, help="Path to SQLite file")
     parser.add_argument("-o", "--output", default="filtered.sqlite3", type=Path, help="File path of filtered output (SQLite file)")
     parser.add_argument("-l", "--list", action="store_true", help="List sample hashes contained in SQLite DB")
-    parser.add_argument("--verbose", "-v", dest="verbose", action="count", help="Set logging verbosity (-vvv)", default=0)
+    # TODO
+    # parser.add_argument("--verbose", "-v", dest="verbose", action="count", help="Set logging verbosity (-vvv)", default=0)
     return parser.parse_args()
 
 
