@@ -12,9 +12,6 @@ if [ "${EUID}" -ne 0 ]; then
   exit 1
 fi
 
-# lock infolder/.gitignore
-chattr +i ${infolder}/.gitignore
-
 get_timestamp () {
     local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
     echo ${timestamp}
