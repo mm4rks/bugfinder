@@ -38,12 +38,13 @@ def dewolf_error(request, row_id):
 
 @login_required
 def sample(request, sample_hash):
-    output = f"Sample: {sample_hash}"
     try:
         sample_entries = Sample.objects.using("samples").filter(sample_hash__exact=sample_hash)
     except Sample.DoesNotExist:
         raise Http404("Sample does not exist")
-    return HttpResponse(output)
+    context = {"samples": sample_entries}
+    template = loader.get_template("sample.html")
+    return HttpResponse(template.render(context, request))
 
 @login_required
 def samples(request):

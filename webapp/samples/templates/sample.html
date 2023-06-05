@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block content %}
+{% for sample in samples %}
+    <div class="container">
+        <div class="row">
+            <div class="col-sm">
+                <h3>{{ sample.sample_hash }} ({{ sample.platform }})</h3>
+                <table class="table">
+                    <thead>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <th scope="row">commit</th>
+                            <td>
+                                <code>{{ sample.commit }}</code>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row">binja version</th>
+                            <td>{{ sample.binaryninja_version }}</td>
+                        </tr>
+                        <tr>
+                            <th scope="row">total functions in sample</th>
+                            <td>TODO</td>
+                        </tr>
+                        <tr>
+                            <th scope="row">processed functions</th>
+                            <td>{{ sample.count_total_processed }}</td>
+                        </tr>
+                        <tr>
+                            <th scope="row">successful</th>
+                            <td>{{ sample.count_success }}</td>
+                        </tr>
+                        <tr>
+                            <th scope="row">decompilation errors</th>
+                            <td>{{ sample.count_error }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+{% endfor %}
+{% endblock content %}

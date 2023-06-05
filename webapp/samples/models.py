@@ -23,7 +23,7 @@ class Summary(models.Model):
 
 class Sample(models.Model):
     sample_hash = models.TextField(blank=False, null=False)
-    function_platform = models.TextField(blank=True, null=True)  # This field type is a guess.
+    platform = models.TextField(blank=True, null=True)  # This field type is a guess.
     commit = models.TextField(blank=True, null=True)  # This field type is a guess.
     binaryninja_version = models.TextField(blank=True, null=True)  # This field type is a guess.
     count_error = models.IntegerField(blank=False, null=True)
