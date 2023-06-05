@@ -3,10 +3,11 @@
     {% if dewolf_errors %}
         <div class="container">
             <h3>dewolf errors</h3>
+            <p>Errors are grouped by exception type, filename, and line number. Size is measured by the count of basic blocks in the decompiled function.</p>
             <table class="table table-hover">
                 <thead>
                     <tr>
-                        <th scope="col" class="w-75">Exception</th>
+                        <th scope="col" class="w-75">Case Group</th>
                         <th scope="col">Size</th>
                         <th scope="col">Count</th>
                     </tr>
@@ -17,11 +18,11 @@
                             onclick="window.location='{% url 'dewolf_error' failed_case.id %}';">
                             <td>
                                 <code>
-                                    {{ failed_case.dewolf_exception }}
+                                    {{ failed_case.case_group }}
                                 </code>
                             </td>
                             <td>{{ failed_case.function_basic_block_count }}</td>
-                            <td>{{ failed_case.exception_count_pre_filter }}</td>
+                            <td>{{ failed_case.errors_per_group_count_pre_filter }}</td>
                         </tr>
                     {% endfor %}
                 </tbody>

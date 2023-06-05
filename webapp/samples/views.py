@@ -7,31 +7,34 @@ from django.template import loader
 from django.contrib.auth.decorators import login_required
 from django.conf import Path, settings
 
-from .models import Sample, Summary
+from .models import Sample, Summary, DewolfError
 
 
 @login_required
 def index(request):
-    failed_cases = Sample.objects.using("samples").filter(is_successful=False)
-    # note: in template we use exception_count_pre_filter
-    subquery_exception_count = (
-        failed_cases.filter(dewolf_exception=OuterRef("dewolf_exception"))
-        .values("dewolf_exception")
-        .annotate(exception_count=Count("dewolf_exception"))
-        .values("exception_count")
-    )
+    failed_cases = DewolfError.objects.using("samples").filter(is_successful=False)
+    # select the smallest representative from a case group
     subquery_min_ids = (
-        failed_cases.filter(dewolf_exception=OuterRef("dewolf_exception")).order_by("function_basic_block_count").values("id")
+        failed_cases.filter(case_group=OuterRef("case_group")).order_by("function_basic_block_count").values("id")
     )
     min_dewolf_exceptions = (
         failed_cases.filter(id=Subquery(subquery_min_ids[:1]))
-        .annotate(exception_count=Subquery(subquery_exception_count))
-        .order_by("-exception_count")
+        .order_by("-errors_per_group_count_pre_filter")
     )
     template = loader.get_template("index.html")
     context = {"dewolf_errors": min_dewolf_exceptions}
     return HttpResponse(template.render(context, request))
 
+@login_required
+def dewolf_error(request, row_id):
+    dewolf_error = DewolfError.objects.using("samples").get(id=row_id)
+    related_cases = (
+            DewolfError.objects.using("samples").filter(case_group=dewolf_error.case_group).exclude(id=row_id)
+            .order_by("function_basic_block_count")
+            )
+    context = {"failed_case": dewolf_error, "related_cases": related_cases}
+    template = loader.get_template("dewolf_error.html")
+    return HttpResponse(template.render(context, request))
 
 @login_required
 def sample(request, sample_hash):
@@ -75,10 +78,3 @@ def download_sample(request, sample_hash):
         return FileResponse(open(zip_path, "rb"), as_attachment=True, filename=f"{sample_hash}.zip")
 
 
-@login_required
-def dewolf_error(request, row_id):
-    dewolf_exception = Sample.objects.using("samples").get(id=row_id)
-    related_cases = Sample.objects.using("samples").filter(dewolf_exception=dewolf_exception.dewolf_exception).exclude(id=row_id)
-    context = {"failed_case": Sample.objects.using("samples").get(id=row_id), "related_cases": related_cases}
-    template = loader.get_template("dewolf_error.html")
-    return HttpResponse(template.render(context, request))

@@ -15,12 +15,26 @@ class Summary(models.Model):
     total_errors = models.IntegerField(blank=True, null=True)  # This field type is a guess.
     unique_exceptions = models.IntegerField(blank=True, null=True)  # This field type is a guess.
     unique_tracebacks = models.IntegerField(blank=True, null=True)  # This field type is a guess.
+    processed_samples = models.IntegerField(blank=True, null=True)  # This field type is a guess.
 
     class Meta:
         managed = False
         db_table = 'summary'
 
 class Sample(models.Model):
+    sample_hash = models.TextField(blank=False, null=False)
+    function_platform = models.TextField(blank=True, null=True)  # This field type is a guess.
+    commit = models.TextField(blank=True, null=True)  # This field type is a guess.
+    binaryninja_version = models.TextField(blank=True, null=True)  # This field type is a guess.
+    count_error = models.IntegerField(blank=False, null=True)
+    count_success = models.IntegerField(blank=False, null=True)
+    count_total_processed = models.IntegerField(blank=False, null=True)
+
+    class Meta:
+        managed = False
+        db_table = 'samples'
+
+class DewolfError(models.Model):
     function_name = models.TextField(blank=True, null=True)  # This field type is a guess.
     function_basic_block_count = models.IntegerField(blank=True, null=True)  # This field type is a guess.
     function_size = models.IntegerField(blank=True, null=True)  # This field type is a guess.
@@ -34,10 +48,13 @@ class Sample(models.Model):
     dewolf_exception = models.TextField(blank=True, null=True)  # This field type is a guess.
     dewolf_traceback = models.TextField(blank=True, null=True)  # This field type is a guess.
     dewolf_decompilation_time = models.IntegerField(blank=True, null=True)  # This field type is a guess.
-    exception_count_pre_filter = models.IntegerField(blank=True, null=True)  # This field type is a guess.
     dewolf_undecorated_code = models.TextField(blank=True, null=True)  # This field type is a guess.
     is_successful = models.BooleanField(blank=True, null=True)  # This field type is a guess.
+    error_file_path = models.TextField(blank=True, null=True)  # This field type is a guess.
+    error_line = models.TextField(blank=True, null=True)  # This field type is a guess.
+    case_group = models.TextField(blank=True, null=True)  # This field type is a guess.
+    errors_per_group_count_pre_filter = models.IntegerField(blank=True, null=True)  # This field type is a guess.
 
     class Meta:
         managed = False
-        db_table = 'dewolf'
+        db_table = 'dewolf_errors'
