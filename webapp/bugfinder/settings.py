@@ -130,6 +130,10 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+#github
+GITHUB_TOKEN = os.environ.get('GITHUB_TOKEN', "none")
+GITHUB_REPO_OWNER = os.environ['GITHUB_REPO_OWNER']
+GITHUB_REPO_NAME = os.environ['GITHUB_REPO_NAME']
 
 # email
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"

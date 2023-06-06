@@ -58,3 +58,13 @@ class DewolfError(models.Model):
     class Meta:
         managed = False
         db_table = 'dewolf_errors'
+
+class GitHubIssue(models.Model):
+    case_group = models.TextField()
+    title = models.TextField()
+    description = models.TextField()
+    status = models.CharField(max_length=100)
+    number = models.IntegerField()
+    html_url = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
