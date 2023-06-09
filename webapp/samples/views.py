@@ -19,7 +19,7 @@ from .models import DewolfError, GitHubIssue, Sample, Summary
 
 @login_required
 def index(request):
-    _update_issues() # TODO some kind of rate limiting? or caching?
+    # _update_issues() # TODO some kind of rate limiting? or caching?
     failed_cases = DewolfError.objects.using("samples").filter(is_successful=False)
     # select the smallest representative from a case group
     subquery_min_ids = failed_cases.filter(case_group=OuterRef("case_group")).order_by("function_basic_block_count").values("id")
