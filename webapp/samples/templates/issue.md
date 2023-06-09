@@ -6,8 +6,6 @@
 
 Error class `{{ issue.case_group }}` contains **{{ issue.errors_per_group_count_pre_filter }}** cases.
 
-case: https://bugfinder.seclab-bonn.de/case/{{ issue.id }}/
-
 
 # How to reproduce?
 

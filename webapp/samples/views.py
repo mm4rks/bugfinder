@@ -108,23 +108,17 @@ def get_issue_status(issue) -> str:
     return status
 
 
-@login_required
-def update_issues(request):
-    issues = _update_issues()
-    return HttpResponse("\n".join(issues))
+def _case_group_from_title(title: str) -> str:
+    return title[1: title.find("]")]
 
-
-def _update_issues():
+def _create_issues_table_in_samples_db():
     """
     create issue table in our 'custom managed' filtered.sqlite3 db.
-    Then populate it with issues
-
-    note: should probably do it with manage.py migrations...
     """
+    # TODO only do this once? move to filter.py?
     # Get the 'samples' database connection
     samples_db = connections["samples"]
 
-    # Run the migrations to create the necessary table
     with samples_db.cursor() as cursor:
         cursor.execute(
             """
@@ -141,12 +135,17 @@ def _update_issues():
             );
         """
         )
+    samples_db.commit() # commit the table creation
 
-    # Commit the changes
-    samples_db.commit()
+
+def _update_issues():
+    """
+    Iterate repo issues (tagged 'bugfinder'), match them to case group and write to issue db
+    """
+    _create_issues_table_in_samples_db()
     issues = []
     repo = Github(settings.GITHUB_TOKEN, settings.GITHUB_REPO_OWNER, settings.GITHUB_REPO_NAME)
-    for issue in repo.iter_existing_issues():
+    for title, issue in repo.existing_issue_titles_to_issue_map.items():
         issues.append(f"#{issue['number']}: {get_issue_status(issue)}")
         try:
             db_issue = GitHubIssue.objects.using("samples").get(number=issue["number"])
@@ -154,8 +153,23 @@ def _update_issues():
             db_issue.updated_at = datetime.now()
             db_issue.save()
         except GitHubIssue.DoesNotExist:
-            continue
+            github_issue = GitHubIssue.objects.using("samples").create(
+                case_group=_case_group_from_title(title),
+                title=title,
+                description="",
+                status=get_issue_status(issue),
+                number=issue["number"],
+                html_url=issue["html_url"],
+                created_at=datetime.now(),
+                updated_at=datetime.now(),
+            )
+            github_issue.save()
     return issues
+
+@login_required
+def update_issues(request):
+    issues = _update_issues()
+    return HttpResponse("\n".join(issues))
 
 
 @login_required

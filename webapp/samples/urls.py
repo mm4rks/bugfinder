@@ -11,5 +11,3 @@ urlpatterns = [
     path("issue/<int:case_id>/", views.create_github_issue, name="create_github_issue"),
     path("download/<str:sample_hash>/", views.download_sample, name="download_sample"),
 ]
-
-views._update_issues()
