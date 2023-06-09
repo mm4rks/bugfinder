@@ -20,6 +20,14 @@
                                 <code>
                                     {{ failed_case.case_group }}
                                 </code>
+                                {% if failed_case.issue_status == "open" %}
+                                    <a class="badge bg-success text-decoration-none" href="{{ failed_case.issue_html_url }}">Open #{{ failed_case.issue_number }}</a>
+                                {% elif failed_case.issue_status == "in progress" %}
+                                    <a class="badge bg-warning text-decoration-none" href="{{ failed_case.issue_html_url }}">In Progress #{{ failed_case.issue_number }}</a>
+                                {% elif failed_case.issue_status == "closed" %}
+                                    <a class="badge bg-danger text-decoration-none" href="{{ failed_case.issue_html_url }}">Closed #{{ failed_case.issue_number }}</a>
+                                {% endif %}
+
                             </td>
                             <td>{{ failed_case.function_basic_block_count }}</td>
                             <td>{{ failed_case.errors_per_group_count_pre_filter }}</td>

@@ -1,40 +1,61 @@
+import logging
 import tempfile
+from datetime import datetime
+
 import pyminizip
-
-from django.db.models import Avg, Count, OuterRef, Subquery
-from django.http import FileResponse, Http404, HttpResponse
-from django.template import loader
-from django.contrib.auth.decorators import login_required
 from django.conf import Path, settings
+from django.contrib.auth.decorators import login_required
+from django.db import connections
+from django.db.models import (Avg, CharField, Count, IntegerField, OuterRef, TextField,
+                              Subquery, Value)
+from django.db.models.functions import Coalesce
+from django.http import FileResponse, Http404, HttpResponse
+from django.shortcuts import redirect
+from django.template import loader
 
-from .models import Sample, Summary, DewolfError
+from .github import Github
+from .models import DewolfError, GitHubIssue, Sample, Summary
 
 
 @login_required
 def index(request):
+    # _update_issues() # TODO some kind of rate limiting? or caching?
     failed_cases = DewolfError.objects.using("samples").filter(is_successful=False)
     # select the smallest representative from a case group
-    subquery_min_ids = (
-        failed_cases.filter(case_group=OuterRef("case_group")).order_by("function_basic_block_count").values("id")
-    )
-    min_dewolf_exceptions = (
-        failed_cases.filter(id=Subquery(subquery_min_ids[:1]))
-        .order_by("-errors_per_group_count_pre_filter")
+    subquery_min_ids = failed_cases.filter(case_group=OuterRef("case_group")).order_by("function_basic_block_count").values("id")
+    min_dewolf_exceptions = failed_cases.filter(id=Subquery(subquery_min_ids[:1])).order_by("-errors_per_group_count_pre_filter")
+
+    # Annotate min_dewolf_exceptions with the number and status of GitHubIssue
+    github_issue_subquery = GitHubIssue.objects.using("samples").filter(case_group=OuterRef("case_group")).values("number", "status")
+    min_dewolf_exceptions = min_dewolf_exceptions.annotate(
+        issue_number=Coalesce(Subquery(github_issue_subquery.values("number")[:1]), Value(None, output_field=IntegerField())),
+        issue_status=Coalesce(Subquery(github_issue_subquery.values("status")[:1]), Value("", output_field=CharField())),
+        issue_html_url=Coalesce(Subquery(github_issue_subquery.values("html_url")[:1]), Value("", output_field=TextField())),
     )
     template = loader.get_template("index.html")
     context = {"dewolf_errors": min_dewolf_exceptions}
     return HttpResponse(template.render(context, request))
 
+
 @login_required
 def dewolf_error(request, row_id):
     dewolf_error = DewolfError.objects.using("samples").get(id=row_id)
     related_cases = (
-            DewolfError.objects.using("samples").filter(case_group=dewolf_error.case_group).exclude(id=row_id)
-            .order_by("function_basic_block_count")
-            )
-    context = {"failed_case": dewolf_error, "related_cases": related_cases}
+        DewolfError.objects.using("samples")
+        .filter(case_group=dewolf_error.case_group)
+        .exclude(id=row_id)
+        .order_by("function_basic_block_count")
+    )
+    # get issue
+    try:
+        issue = GitHubIssue.objects.using("samples").get(case_group=dewolf_error.case_group)
+    except GitHubIssue.DoesNotExist:
+        issue = None
+
+    context = {"failed_case": dewolf_error, "related_cases": related_cases, "issue": issue}
     template = loader.get_template("dewolf_error.html")
     return HttpResponse(template.render(context, request))
+
 
 @login_required
 def sample(request, sample_hash):
@@ -45,6 +66,7 @@ def sample(request, sample_hash):
     context = {"samples": sample_entries}
     template = loader.get_template("sample.html")
     return HttpResponse(template.render(context, request))
+
 
 @login_required
 def samples(request):
@@ -70,7 +92,7 @@ def download_sample(request, sample_hash):
         raise Http404()
 
     with tempfile.TemporaryDirectory() as tdir:
-        sample_file = Path(settings.SAMPLE_DIR) / sample_hash 
+        sample_file = Path(settings.SAMPLE_DIR) / sample_hash
         zip_path = Path(tdir) / f"{sample_hash}.zip"
         try:
             pyminizip.compress(sample_file.as_posix(), None, zip_path.as_posix(), settings.ZIP_PASSWORD, settings.ZIP_COMPRESSION_LEVEL)
@@ -79,3 +101,108 @@ def download_sample(request, sample_hash):
         return FileResponse(open(zip_path, "rb"), as_attachment=True, filename=f"{sample_hash}.zip")
 
 
+def get_issue_status(issue) -> str:
+    status = issue["state"]
+    if status == "open" and issue["assignee"] is not None:
+        return "in progress"
+    return status
+
+
+def _case_group_from_title(title: str) -> str:
+    return title[1: title.find("]")]
+
+def _create_issues_table_in_samples_db():
+    """
+    create issue table in our 'custom managed' filtered.sqlite3 db.
+    """
+    # TODO only do this once? move to filter.py?
+    # Get the 'samples' database connection
+    samples_db = connections["samples"]
+
+    with samples_db.cursor() as cursor:
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS samples_githubissue (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                case_group TEXT,
+                title TEXT,
+                description TEXT,
+                status VARCHAR(100),
+                number INTEGER,
+                html_url TEXT,
+                created_at TIMESTAMP,
+                updated_at TIMESTAMP
+            );
+        """
+        )
+    samples_db.commit() # commit the table creation
+
+
+def _update_issues():
+    """
+    Iterate repo issues (tagged 'bugfinder'), match them to case group and write to issue db
+    """
+    _create_issues_table_in_samples_db()
+    issues = []
+    repo = Github(settings.GITHUB_TOKEN, settings.GITHUB_REPO_OWNER, settings.GITHUB_REPO_NAME)
+    for title, issue in repo.existing_issue_titles_to_issue_map.items():
+        issues.append(f"#{issue['number']}: {get_issue_status(issue)}")
+        try:
+            db_issue = GitHubIssue.objects.using("samples").get(number=issue["number"])
+            db_issue.status = get_issue_status(issue)
+            db_issue.updated_at = datetime.now()
+            db_issue.save()
+        except GitHubIssue.DoesNotExist:
+            github_issue = GitHubIssue.objects.using("samples").create(
+                case_group=_case_group_from_title(title),
+                title=title,
+                description="",
+                status=get_issue_status(issue),
+                number=issue["number"],
+                html_url=issue["html_url"],
+                created_at=datetime.now(),
+                updated_at=datetime.now(),
+            )
+            github_issue.save()
+    return issues
+
+@login_required
+def update_issues(request):
+    issues = _update_issues()
+    return HttpResponse("\n".join(issues))
+
+
+@login_required
+def create_github_issue(request, case_id):
+    dewolf_error = DewolfError.objects.using("samples").get(id=case_id)
+
+    if request.method == "GET":
+        # display issue
+        try:
+            db_issue = GitHubIssue.objects.using("samples").get(case_group=dewolf_error.case_group)
+            # TODO display issue information
+            return HttpResponse(str(db_issue))
+        except GitHubIssue.DoesNotExist:
+            raise Http404()
+    elif request.method == "POST":
+        # create issue
+        context = {"issue": dewolf_error}
+        issue_title = f"[{dewolf_error.case_group}] {dewolf_error.dewolf_exception}"
+        issue_text = loader.render_to_string("issue.md", context)
+        repo = Github(settings.GITHUB_TOKEN, settings.GITHUB_REPO_OWNER, settings.GITHUB_REPO_NAME)
+        if (issue := repo.create_issue(title=issue_title, body=issue_text)) is not None:
+            # Create a new instance of the GitHubIssue model
+            github_issue = GitHubIssue.objects.using("samples").create(
+                case_group=dewolf_error.case_group,
+                title=issue_title,
+                description="",
+                status=get_issue_status(issue),
+                number=issue["number"],
+                html_url=issue["html_url"],
+                created_at=datetime.now(),
+                updated_at=datetime.now(),
+            )
+            github_issue.save()
+        else:
+            logging.warning("no issue was created")
+        return redirect(request.META["HTTP_REFERER"])
