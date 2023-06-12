@@ -23,12 +23,17 @@ class Summary(models.Model):
 
 class Sample(models.Model):
     sample_hash = models.TextField(blank=False, null=False)
+    dewolf_current_commit = models.TextField(blank=True, null=True)  # This field type is a guess.
     platform = models.TextField(blank=True, null=True)  # This field type is a guess.
-    commit = models.TextField(blank=True, null=True)  # This field type is a guess.
     binaryninja_version = models.TextField(blank=True, null=True)  # This field type is a guess.
     count_error = models.IntegerField(blank=False, null=True)
     count_success = models.IntegerField(blank=False, null=True)
     count_total_processed = models.IntegerField(blank=False, null=True)
+    timestamp = models.TextField(blank=True, null=True)  # This field type is a guess.
+    duration_seconds = models.IntegerField(blank=False, null=True)
+    dewolf_max_basic_blocks = models.IntegerField(blank=False, null=True)
+    sample_total_function_count = models.IntegerField(blank=False, null=True)
+    sample_decompilable_function_count = models.IntegerField(blank=False, null=True)
 
     class Meta:
         managed = False
@@ -42,14 +47,17 @@ class DewolfError(models.Model):
     function_platform = models.TextField(blank=True, null=True)  # This field type is a guess.
     sample_hash = models.TextField(blank=True, null=True)  # This field type is a guess.
     sample_name = models.TextField(blank=True, null=True)  # This field type is a guess.
-    dewolf_options = models.TextField(blank=True, null=True)  # This field type is a guess.
+    sample_total_function_count = models.IntegerField(blank=True, null=True)  # This field type is a guess.
+    sample_decompilable_function_count = models.IntegerField(blank=True, null=True)  # This field type is a guess.
     dewolf_current_commit = models.TextField(blank=True, null=True)  # This field type is a guess.
     binaryninja_version = models.TextField(blank=True, null=True)  # This field type is a guess.
+    dewolf_max_basic_blocks = models.IntegerField(blank=False, null=True)
     dewolf_exception = models.TextField(blank=True, null=True)  # This field type is a guess.
     dewolf_traceback = models.TextField(blank=True, null=True)  # This field type is a guess.
     dewolf_decompilation_time = models.IntegerField(blank=True, null=True)  # This field type is a guess.
     dewolf_undecorated_code = models.TextField(blank=True, null=True)  # This field type is a guess.
     is_successful = models.BooleanField(blank=True, null=True)  # This field type is a guess.
+    timestamp = models.TextField(blank=True, null=True)  # This field type is a guess.
     error_file_path = models.TextField(blank=True, null=True)  # This field type is a guess.
     error_line = models.TextField(blank=True, null=True)  # This field type is a guess.
     case_group = models.TextField(blank=True, null=True)  # This field type is a guess.

@@ -19,9 +19,11 @@ from .models import DewolfError, GitHubIssue, Sample, Summary
 
 @login_required
 def index(request):
-    # _update_issues() # TODO some kind of rate limiting? or caching?
-    failed_cases = DewolfError.objects.using("samples").filter(is_successful=False)
+    """
+    Index view, list smallest cases per case group
+    """
     # select the smallest representative from a case group
+    failed_cases = DewolfError.objects.using("samples").filter(is_successful=False)
     subquery_min_ids = failed_cases.filter(case_group=OuterRef("case_group")).order_by("function_basic_block_count").values("id")
     min_dewolf_exceptions = failed_cases.filter(id=Subquery(subquery_min_ids[:1])).order_by("-errors_per_group_count_pre_filter")
 
@@ -111,38 +113,11 @@ def get_issue_status(issue) -> str:
 def _case_group_from_title(title: str) -> str:
     return title[1: title.find("]")]
 
-def _create_issues_table_in_samples_db():
-    """
-    create issue table in our 'custom managed' filtered.sqlite3 db.
-    """
-    # TODO only do this once? move to filter.py?
-    # Get the 'samples' database connection
-    samples_db = connections["samples"]
-
-    with samples_db.cursor() as cursor:
-        cursor.execute(
-            """
-            CREATE TABLE IF NOT EXISTS samples_githubissue (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                case_group TEXT,
-                title TEXT,
-                description TEXT,
-                status VARCHAR(100),
-                number INTEGER,
-                html_url TEXT,
-                created_at TIMESTAMP,
-                updated_at TIMESTAMP
-            );
-        """
-        )
-    samples_db.commit() # commit the table creation
-
 
 def _update_issues():
     """
     Iterate repo issues (tagged 'bugfinder'), match them to case group and write to issue db
     """
-    _create_issues_table_in_samples_db()
     issues = []
     repo = Github(settings.GITHUB_TOKEN, settings.GITHUB_REPO_OWNER, settings.GITHUB_REPO_NAME)
     for title, issue in repo.existing_issue_titles_to_issue_map.items():
