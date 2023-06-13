@@ -84,15 +84,6 @@
                 <div class="col-12">
                     <h5>How to reproduce</h5>
                     <code>python decompile.py {{ failed_case.sample_hash }} {{ failed_case.function_name }} --debug</code>
-                </br>
-                <div class="pt-3">
-                    <p>
-                        Optionally place
-                        <a href="data:text/json;base64,{{ failed_case.dewolf_options|b64encode }}"
-                           download="config.json">config.json</a>
-                        in the dewolf directory.
-                    </p>
-                </div>
                 <h5 class="pt-3">Affected Versions</h5>
                 Binaryninja Version: <code>{{ failed_case.binaryninja_version }}</code>
             </br>

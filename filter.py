@@ -6,13 +6,23 @@ import sys
 from pathlib import Path
 from typing import Dict, Iterator, Union
 
-from pandas import DataFrame, read_sql_query, unique
+from pandas import DataFrame, read_sql_query, unique, to_datetime
 
 
 class DBFilter:
     QUERY = "SELECT * from dewolf" # query to read from samples.sqlite3
-    SCHEMA = ""
-
+    ISSUE_SCHEMA = """CREATE TABLE IF NOT EXISTS samples_githubissue (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            case_group TEXT,
+            title TEXT,
+            description TEXT,
+            status VARCHAR(100),
+            number INTEGER,
+            html_url TEXT,
+            created_at TIMESTAMP,
+            updated_at TIMESTAMP
+        );
+        """
     def __init__(self, df: DataFrame):
         self._summary = None
         self._filtered = None
@@ -89,20 +99,24 @@ class DBFilter:
         """
         Return DataFrame containing per sample statistics
         """
-        # TODO deduplicate multiple runs on the same sample
+        self._df["timestamp"] = to_datetime(self._df["timestamp"])
         unique_lst_to_str = lambda x: ",".join(iter(unique(x)))
         samples = (
-            self._df.groupby("sample_hash")
-            .agg(
-                platform=("function_platform", unique_lst_to_str),
-                commit=("dewolf_current_commit", unique_lst_to_str),
-                binaryninja_version=("binaryninja_version", unique_lst_to_str),
-                count_error=("is_successful", lambda x: sum(x == 0)),
-                count_success=("is_successful", lambda x: sum(x == 1)),
-                count_total_processed=("is_successful", "count"),
+            self._df.groupby(["sample_hash", "dewolf_current_commit"])
+                .agg(
+                    platform=("function_platform", unique_lst_to_str),
+                    binaryninja_version=("binaryninja_version", unique_lst_to_str),
+                    count_error=("is_successful", lambda x: sum(x == 0)),
+                    count_success=("is_successful", lambda x: sum(x == 1)),
+                    count_total_processed=("is_successful", "count"),
+                    timestamp=("timestamp", "min"),
+                    duration_seconds=("timestamp", lambda x: (x.max() - x.min()).total_seconds()),
+                    dewolf_max_basic_blocks=("dewolf_max_basic_blocks", lambda x: x.iloc[0]),
+                    sample_total_function_count=("sample_total_function_count", lambda x: x.iloc[0]),
+                    sample_decompilable_function_count=("sample_decompilable_function_count", lambda x: x.iloc[0])
+                )
+                .reset_index()
             )
-            .reset_index()
-        )
         samples["id"] = samples.index
         return samples
 
@@ -141,6 +155,13 @@ class DBFilter:
         self._write_df_to_sqlite3(self.filtered, file_path, "dewolf_errors")
         self._write_df_to_sqlite3(self.samples, file_path, "samples")
 
+        # create issue table
+        with sqlite3.connect(file_path) as con:
+            cursor = con.cursor()
+            cursor.execute(self.ISSUE_SCHEMA)
+            con.commit()
+
+
 
 def print_sample_hashes(db_file: Path):
     """Print all sample hashes contained in DB file"""
@@ -175,7 +196,7 @@ def existing_file(path):
 def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Bug finding tool for dewolf decompiler")
     parser.add_argument("-i", "--input", required=True, type=existing_file, help="Path to SQLite file")
-    parser.add_argument("-o", "--output", default="filtered.sqlite3", type=Path, help="File path of filtered output (SQLite file)")
+    parser.add_argument("-o", "--output", default="filtered.sqlite3", type=Path, help="File path of filtered output (SQLite file, default: filtered.sqlite3)")
     parser.add_argument("-l", "--list", action="store_true", help="List sample hashes contained in SQLite DB")
     # TODO
     # parser.add_argument("--verbose", "-v", dest="verbose", action="count", help="Set logging verbosity (-vvv)", default=0)
