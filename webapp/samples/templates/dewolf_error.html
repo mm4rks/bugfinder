@@ -3,14 +3,8 @@
 {% block content %}
     {% if failed_case %}
         <div class="container">
-            <div class="row">
-                <div class="col-7">
-                    <h4>{{ failed_case.dewolf_exception }}</h4>
-                    <pre><code>
-{{ failed_case.dewolf_traceback}}
-            </code></pre>
-                </div>
-                <div class="col-5 text-truncate">
+            <div class="row flex-column flex-md-row">
+                <div class="col-md-5 order-md-2 text-truncate">
                     <h5></h5>
                     <table class="table">
                         <thead>
@@ -78,6 +72,12 @@
                             </tr>
                         </tbody>
                     </table>
+                </div>
+                <div class="col-md-7 order-md-1">
+                    <h4>{{ failed_case.dewolf_exception }}</h4>
+                    <pre><code>
+{{ failed_case.dewolf_traceback}}
+            </code></pre>
                 </div>
             </div>
             <div class="row">
