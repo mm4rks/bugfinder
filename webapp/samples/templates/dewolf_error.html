@@ -43,7 +43,7 @@
                             </tr>
                             <tr>
                                 <th scope="row">function name</th>
-                                <td>{{ failed_case.function_name }}</td>
+                                <td>{{ failed_case.function_name|truncatechars:30 }}</td>
                             </tr>
                             <tr>
                                 <th scope="row">size</th>
@@ -121,7 +121,7 @@
                                 </td>
                                 <td class="truncate">
                                     <code>
-                                        {{ related_case.function_name }}
+                                        {{ related_case.function_name|truncatechars:30 }}
                                     </code>
                                 </td>
                                 <td>{{ related_case.function_basic_block_count }}</td>
