@@ -2,6 +2,7 @@
 
 DEWOLF_REPO=$(pwd)/dewolf/repo
 image_name="bugfinder-dewolf"
+dewolf_branch="issue-241-_Bugfinder_Log_total_function_count_of_binary_sample"
 
 read -p "Update dewolf? [Y/n]: " -n 1 -r
 echo
@@ -17,7 +18,7 @@ if [ ! -d "$DEWOLF_REPO" ]; then
 fi
 pushd $DEWOLF_REPO
 git fetch --all 
-git checkout main
+git checkout ${dewolf_branch}
 git pull
 popd
 
