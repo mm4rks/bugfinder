@@ -3,14 +3,8 @@
 {% block content %}
     {% if failed_case %}
         <div class="container">
-            <div class="row">
-                <div class="col-7">
-                    <h4>{{ failed_case.dewolf_exception }}</h4>
-                    <pre><code>
-{{ failed_case.dewolf_traceback}}
-            </code></pre>
-                </div>
-                <div class="col-5 text-truncate">
+            <div class="row flex-column flex-md-row">
+                <div class="col-md-5 order-md-2 text-truncate">
                     <h5></h5>
                     <table class="table">
                         <thead>
@@ -43,7 +37,7 @@
                             </tr>
                             <tr>
                                 <th scope="row">function name</th>
-                                <td>{{ failed_case.function_name }}</td>
+                                <td>{{ failed_case.function_name|truncatechars:30 }}</td>
                             </tr>
                             <tr>
                                 <th scope="row">size</th>
@@ -79,11 +73,17 @@
                         </tbody>
                     </table>
                 </div>
+                <div class="col-md-7 order-md-1">
+                    <h4>{{ failed_case.dewolf_exception }}</h4>
+                    <pre><code>
+{{ failed_case.dewolf_traceback}}
+            </code></pre>
+                </div>
             </div>
             <div class="row">
                 <div class="col-12">
                     <h5>How to reproduce</h5>
-                    <code>python decompile.py {{ failed_case.sample_hash }} {{ failed_case.function_name }} --debug</code>
+                    <code class="user-select-all">dewolf {{ failed_case.sample_hash }} {{ failed_case.function_name }} --debug</code>
                 <h5 class="pt-3">Affected Versions</h5>
                 Binaryninja Version: <code>{{ failed_case.binaryninja_version }}</code>
             </br>
@@ -121,7 +121,7 @@
                                 </td>
                                 <td class="truncate">
                                     <code>
-                                        {{ related_case.function_name }}
+                                        {{ related_case.function_name|truncatechars:30 }}
                                     </code>
                                 </td>
                                 <td>{{ related_case.function_basic_block_count }}</td>

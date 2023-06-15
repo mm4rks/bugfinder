@@ -3,7 +3,9 @@
     {% if dewolf_errors %}
         <div class="container">
             <h3>dewolf errors</h3>
-            <p>Errors are grouped by exception type, filename, and line number. Size is measured by the count of basic blocks in the decompiled function.</p>
+            <p>
+                Errors are grouped by exception type, filename, and line number. Size is measured by the count of basic blocks in the decompiled function.
+            </p>
             <table class="table table-hover">
                 <thead>
                     <tr>
@@ -14,20 +16,21 @@
                 </thead>
                 <tbody>
                     {% for failed_case in dewolf_errors %}
-                        <tr class="clickable"
-                            onclick="window.location='{% url 'dewolf_error' failed_case.id %}';">
+                        <tr onclick="window.location='{% url 'dewolf_error' failed_case.id %}';">
                             <td>
-                                <code>
-                                    {{ failed_case.case_group }}
-                                </code>
+                                <a class="pe-3 text-decoration-none" href="{% url 'dewolf_error' failed_case.id %}">
+                                    <code>{{ failed_case.case_group }}</code>
+                                </a>
                                 {% if failed_case.issue_status == "open" %}
-                                    <a class="badge bg-success text-decoration-none" href="{{ failed_case.issue_html_url }}">Open #{{ failed_case.issue_number }}</a>
+                                    <a class="badge bg-success text-decoration-none"
+                                       href="{{ failed_case.issue_html_url }}">Open #{{ failed_case.issue_number }}</a>
                                 {% elif failed_case.issue_status == "in progress" %}
-                                    <a class="badge bg-warning text-decoration-none" href="{{ failed_case.issue_html_url }}">In Progress #{{ failed_case.issue_number }}</a>
+                                    <a class="badge bg-warning text-decoration-none"
+                                       href="{{ failed_case.issue_html_url }}">In Progress #{{ failed_case.issue_number }}</a>
                                 {% elif failed_case.issue_status == "closed" %}
-                                    <a class="badge bg-danger text-decoration-none" href="{{ failed_case.issue_html_url }}">Closed #{{ failed_case.issue_number }}</a>
+                                    <a class="badge bg-danger text-decoration-none"
+                                       href="{{ failed_case.issue_html_url }}">Closed #{{ failed_case.issue_number }}</a>
                                 {% endif %}
-
                             </td>
                             <td>{{ failed_case.function_basic_block_count }}</td>
                             <td>{{ failed_case.errors_per_group_count_pre_filter }}</td>

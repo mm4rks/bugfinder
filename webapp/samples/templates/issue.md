@@ -1,7 +1,9 @@
 # What happened?
 
 ```python
+{% autoescape off %}
 {{ issue.dewolf_traceback }}
+{% endautoescape %}
 ```
 
 Error class `{{ issue.case_group }}` contains **{{ issue.errors_per_group_count_pre_filter }}** cases.
