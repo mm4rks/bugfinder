@@ -99,7 +99,7 @@ class DBFilter:
         """
         Return DataFrame containing per sample statistics
         """
-        self._df["timestamp"] = to_datetime(self._df["timestamp"])
+        self._df["timestamp"] = to_datetime(self._df["timestamp"], format="mixed")
         unique_lst_to_str = lambda x: ",".join(iter(unique(x)))
         samples = (
             self._df.groupby(["sample_hash", "dewolf_current_commit"])

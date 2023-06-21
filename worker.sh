@@ -1,10 +1,10 @@
 #!/bin/env bash
 
 infolder=./infolder
-max_size=50000000
+max_size=90000
 image_name="bugfinder-dewolf"
 max_workers=12
-max_time=600
+max_time=3600
 
 
 if [ "${EUID}" -ne 0 ]; then 

@@ -73,7 +73,8 @@ def sample(request, sample_hash):
 @login_required
 def samples(request):
     summary = Summary.objects.using("samples").all().first()
-    context = {"summary": summary}
+    average_duration = Sample.objects.using("samples").aggregate(avg_duration=Avg('duration_seconds'))
+    context = {"summary": summary, "avg_duration": average_duration['avg_duration']}
     template = loader.get_template("samples.html")
     return HttpResponse(template.render(context, request))
 
