@@ -6,15 +6,15 @@ import pyminizip
 from django.conf import Path, settings
 from django.contrib.auth.decorators import login_required
 from django.db import connections
-from django.db.models import (Avg, CharField, Count, IntegerField, OuterRef, TextField,
-                              Subquery, Value)
+from django.db.models import (Avg, CharField, Count, IntegerField, OuterRef,
+                              Subquery, TextField, Value)
 from django.db.models.functions import Coalesce
 from django.http import FileResponse, Http404, HttpResponse
 from django.shortcuts import redirect
 from django.template import loader
 
 from .github import Github
-from .models import DewolfError, GitHubIssue, Sample, Summary
+from .models import DewolfError, GitHubIssue, Summary
 
 
 @login_required
@@ -60,21 +60,10 @@ def dewolf_error(request, row_id):
 
 
 @login_required
-def sample(request, sample_hash):
-    try:
-        sample_entries = Sample.objects.using("samples").filter(sample_hash__exact=sample_hash)
-    except Sample.DoesNotExist:
-        raise Http404("Sample does not exist")
-    context = {"samples": sample_entries}
-    template = loader.get_template("sample.html")
-    return HttpResponse(template.render(context, request))
-
-
-@login_required
 def samples(request):
     summary = Summary.objects.using("samples").all().first()
-    average_duration = Sample.objects.using("samples").aggregate(avg_duration=Avg('duration_seconds'))
-    context = {"summary": summary, "avg_duration": average_duration['avg_duration']}
+    average_duration = Sample.objects.using("samples").aggregate(avg_duration=Avg("duration_seconds"))
+    context = {"summary": summary, "avg_duration": average_duration["avg_duration"]}
     template = loader.get_template("samples.html")
     return HttpResponse(template.render(context, request))
 
@@ -112,7 +101,7 @@ def get_issue_status(issue) -> str:
 
 
 def _case_group_from_title(title: str) -> str:
-    return title[1: title.find("]")]
+    return title[1 : title.find("]")]
 
 
 def _update_issues():
@@ -141,6 +130,7 @@ def _update_issues():
             )
             github_issue.save()
     return issues
+
 
 @login_required
 def update_issues(request):

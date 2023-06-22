@@ -21,23 +21,6 @@ class Summary(models.Model):
         managed = False
         db_table = 'summary'
 
-class Sample(models.Model):
-    sample_hash = models.TextField(blank=False, null=False)
-    dewolf_current_commit = models.TextField(blank=True, null=True)  # This field type is a guess.
-    platform = models.TextField(blank=True, null=True)  # This field type is a guess.
-    binaryninja_version = models.TextField(blank=True, null=True)  # This field type is a guess.
-    count_error = models.IntegerField(blank=False, null=True)
-    count_success = models.IntegerField(blank=False, null=True)
-    count_total_processed = models.IntegerField(blank=False, null=True)
-    timestamp = models.TextField(blank=True, null=True)  # This field type is a guess.
-    duration_seconds = models.IntegerField(blank=False, null=True)
-    dewolf_max_basic_blocks = models.IntegerField(blank=False, null=True)
-    sample_total_function_count = models.IntegerField(blank=False, null=True)
-    sample_decompilable_function_count = models.IntegerField(blank=False, null=True)
-
-    class Meta:
-        managed = False
-        db_table = 'samples'
 
 class DewolfError(models.Model):
     function_name = models.TextField(blank=True, null=True)  # This field type is a guess.

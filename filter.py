@@ -6,11 +6,11 @@ import sys
 from pathlib import Path
 from typing import Dict, Iterator, Union
 
-from pandas import DataFrame, read_sql_query, unique, to_datetime
+from pandas import DataFrame, read_sql_query, to_datetime, unique
 
 
 class DBFilter:
-    QUERY = "SELECT * from dewolf" # query to read from samples.sqlite3
+    QUERY = "SELECT * from dewolf"  # query to read from samples.sqlite3
     ISSUE_SCHEMA = """CREATE TABLE IF NOT EXISTS samples_githubissue (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             case_group TEXT,
@@ -23,6 +23,34 @@ class DBFilter:
             updated_at TIMESTAMP
         );
         """
+
+    ERROR_SCHEMA = """CREATE TABLE IF NOT EXISTS dewolf_errors (
+        id INTEGER NOT NULL PRIMARY KEY,
+        function_name TEXT,
+        function_basic_block_count INTEGER,
+        function_size INTEGER,
+        function_arch TEXT,
+        function_platform TEXT,
+        sample_hash TEXT,
+        sample_name TEXT,
+        sample_total_function_count INTEGER,
+        sample_decompilable_function_count INTEGER,
+        dewolf_current_commit TEXT,
+        binaryninja_version TEXT,
+        dewolf_max_basic_blocks INTEGER,
+        dewolf_exception TEXT,
+        dewolf_traceback TEXT,
+        dewolf_decompilation_time REAL,
+        dewolf_undecorated_code TEXT,
+        is_successful INTEGER,
+        timestamp TEXT,
+        error_file_path TEXT,
+        error_line TEXT,
+        case_group TEXT,
+        errors_per_group_count_pre_filter INTEGER
+        )
+    """
+
     def __init__(self, df: DataFrame):
         self._summary = None
         self._filtered = None
@@ -36,21 +64,25 @@ class DBFilter:
         return cls(df)
 
     @staticmethod
-    def _write_df_to_sqlite3(df: DataFrame, database_path: Union[str, Path], table_name: str):
+    def _write_df_to_sqlite3(df: DataFrame, database_path: Union[str, Path], table_name: str, append: bool = False):
         """
         Write DataFrame to SQLite table
         """
         dtype_mapping = {
-            'int64': 'INTEGER',
-            'float64': 'REAL',
-            'bool': 'INTEGER',         # SQLite uses INTEGER for boolean values
-            'datetime64[ns]': 'TEXT',  # SQLite does not have a separate datetime type
-            'object': 'TEXT'           # For all other non-numeric types
+            "int64": "INTEGER",
+            "float64": "REAL",
+            "bool": "INTEGER",  # SQLite uses INTEGER for boolean values
+            "datetime64[ns]": "TEXT",  # SQLite does not have a separate datetime type
+            "object": "TEXT",  # For all other non-numeric types
         }
         dtype = {name: dtype_mapping.get(str(dt), "TEXT") for name, dt in df.dtypes.items()}
         dtype["id"] = "INTEGER NOT NULL PRIMARY KEY"
-        with sqlite3.connect(database_path) as con:
-            df.sort_values("id").to_sql(table_name, con, index=False, if_exists="replace", dtype=dtype)
+        if append:
+            with sqlite3.connect(database_path) as con:
+                df.drop("id", axis=1).to_sql(table_name, con, index=False, if_exists="append", dtype=dtype)
+        else:
+            with sqlite3.connect(database_path) as con:
+                df.to_sql(table_name, con, index=False, if_exists="replace", dtype=dtype)
 
     def _get_summary(self) -> DataFrame:
         """
@@ -81,12 +113,12 @@ class DBFilter:
         failed_runs["error_line"] = failed_runs["dewolf_traceback"].apply(self._get_last_line_number)
         # case id: ExceptionType@file.py:42
         failed_runs["case_group"] = (
-                failed_runs["dewolf_exception"].str.split().str[0].str.strip(": ")
-                + "@"
-                + failed_runs["error_file_path"].str.split("/").str[-1]
-                + ":"
-                + failed_runs["error_line"]
-                )
+            failed_runs["dewolf_exception"].str.split().str[0].str.strip(": ")
+            + "@"
+            + failed_runs["error_file_path"].str.split("/").str[-1]
+            + ":"
+            + failed_runs["error_line"]
+        )
         errors_per_group_count = failed_runs["case_group"].value_counts()
         failed_runs["errors_per_group_count_pre_filter"] = failed_runs["case_group"].map(errors_per_group_count)
         # filter n smallest unique per exception and traceback
@@ -94,31 +126,6 @@ class DBFilter:
         filtered_df = failed_runs.groupby(["dewolf_exception", "dewolf_traceback"]).apply(f)
         assert isinstance(filtered_df, DataFrame)
         return filtered_df.reset_index(drop=True)
-
-    def _get_samples(self) -> DataFrame:
-        """
-        Return DataFrame containing per sample statistics
-        """
-        self._df["timestamp"] = to_datetime(self._df["timestamp"], format="mixed")
-        unique_lst_to_str = lambda x: ",".join(iter(unique(x)))
-        samples = (
-            self._df.groupby(["sample_hash", "dewolf_current_commit"])
-                .agg(
-                    platform=("function_platform", unique_lst_to_str),
-                    binaryninja_version=("binaryninja_version", unique_lst_to_str),
-                    count_error=("is_successful", lambda x: sum(x == 0)),
-                    count_success=("is_successful", lambda x: sum(x == 1)),
-                    count_total_processed=("is_successful", "count"),
-                    timestamp=("timestamp", "min"),
-                    duration_seconds=("timestamp", lambda x: (x.max() - x.min()).total_seconds()),
-                    dewolf_max_basic_blocks=("dewolf_max_basic_blocks", lambda x: x.iloc[0]),
-                    sample_total_function_count=("sample_total_function_count", lambda x: x.iloc[0]),
-                    sample_decompilable_function_count=("sample_decompilable_function_count", lambda x: x.iloc[0])
-                )
-                .reset_index()
-            )
-        samples["id"] = samples.index
-        return samples
 
     @staticmethod
     def _get_last_file_path(traceback: str) -> str:
@@ -144,23 +151,17 @@ class DBFilter:
             self._filtered = self._get_filtered()
         return self._filtered
 
-    @property
-    def samples(self) -> DataFrame:
-        if self._samples is None:
-            self._samples = self._get_samples()
-        return self._samples
-
     def write(self, file_path: Path):
-        self._write_df_to_sqlite3(self.summary, file_path, "summary")
-        self._write_df_to_sqlite3(self.filtered, file_path, "dewolf_errors")
-        self._write_df_to_sqlite3(self.samples, file_path, "samples")
-
-        # create issue table
+        # create issue table, and dewolf_error table
         with sqlite3.connect(file_path) as con:
             cursor = con.cursor()
             cursor.execute(self.ISSUE_SCHEMA)
             con.commit()
+            cursor.execute(self.ERROR_SCHEMA)
+            con.commit()
 
+        self._write_df_to_sqlite3(self.summary, file_path, table_name="summary", append=False)
+        self._write_df_to_sqlite3(self.filtered, file_path, table_name="dewolf_errors", append=True)
 
 
 def print_sample_hashes(db_file: Path):
@@ -196,7 +197,13 @@ def existing_file(path):
 def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Bug finding tool for dewolf decompiler")
     parser.add_argument("-i", "--input", required=True, type=existing_file, help="Path to SQLite file")
-    parser.add_argument("-o", "--output", default="filtered.sqlite3", type=Path, help="File path of filtered output (SQLite file, default: filtered.sqlite3)")
+    parser.add_argument(
+        "-o",
+        "--output",
+        default="filtered.sqlite3",
+        type=Path,
+        help="File path of filtered output (SQLite file, default: filtered.sqlite3)",
+    )
     parser.add_argument("-l", "--list", action="store_true", help="List sample hashes contained in SQLite DB")
     # TODO
     # parser.add_argument("--verbose", "-v", dest="verbose", action="count", help="Set logging verbosity (-vvv)", default=0)

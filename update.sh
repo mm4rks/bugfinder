@@ -70,6 +70,9 @@ fi
 popd
 
 if [ -f "data/samples.sqlite3" ]; then
+    if [ -f "data/filtered.sqlite3" ]; then
+        cp data/filtered.sqlite3 data/filtered.sqlite3.bak
+    fi
     echo "[+] filtering and moving samples.sqlite3"
     source "$(pwd)/.venv/bin/activate"
     python filter.py -i data/samples.sqlite3 -o data/filtered.sqlite3
