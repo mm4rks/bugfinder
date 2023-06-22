@@ -29,8 +29,10 @@ $(ENV_FILE):
 .PHONY: install
 install: dewolf build
 	@echo "installing for $(TARGET)"
+	test -d .venv || python -m venv .venv
+	. .venv/bin/activate; pip install -r requirements.txt
 	mkdir -p data/samples
-	touch data/db.sqlite3 data/samples.sqlite3 data/filtered.sqlite3
+	touch data/db.sqlite3
 	sudo chown -R $(USER_ID):$(GROUP_ID) data/
 	sudo docker compose $(COMPOSE_ARGS) run web python manage.py makemigrations
 	sudo docker compose $(COMPOSE_ARGS) run web python manage.py migrate
@@ -38,10 +40,11 @@ install: dewolf build
 	sudo docker compose $(COMPOSE_ARGS) run --user 0 web python manage.py collectstatic
 	sudo chown -R $(USER_ID):$(GROUP_ID) data/
 	./install_worker_service.sh
+	
 
 .PHONY: dewolf
 dewolf:
-	./install_dewolf.sh
+	./update.sh
 
 .PHONY: filter
 filter:

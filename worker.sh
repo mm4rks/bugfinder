@@ -30,7 +30,7 @@ docker_stop_image () {
 
 finish() {
     local result=$?
-    echo "[+] - $(get_timestamp) - exit worker.sh"
+    echo "[+] - $(get_timestamp) - exiting worker.sh with ${result}"
     docker_stop_image ${image_name}
     exit ${result}
 }
@@ -87,9 +87,12 @@ while [[ true ]]; do
           running_containers=$(sudo docker ps --filter ancestor="${image_name}" -q | wc -l)
         done
         # Start a new worker/container
-        echo "[+] - $(get_timestamp) - starting worker"
+        echo "[+] - $(get_timestamp) - starting worker container"
         run_task ${hash}
         sleep 1
+        docker ps > data/healthcheck.txt
     done
-    sleep 1
+    touch data/idle
+    sleep 6
+    ./update.sh -y
 done
