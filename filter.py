@@ -167,20 +167,11 @@ class DBFilter:
 def print_sample_hashes(db_file: Path):
     """Print all sample hashes contained in DB file"""
     sample_hashes = set()
-    COLUMN = "sample_hash"
+    stmt = "SELECT DISTINCT sample_hash FROM dewolf_errors;"
     with sqlite3.connect(db_file) as con:
         cursor = con.cursor()
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
-        table_names = cursor.fetchall()
-        for table in table_names:
-            table_name = table[0]
-            logging.info(f"read from {table_name}")
-            # Check if the column exists
-            cursor.execute(f"PRAGMA table_info({table_name});")
-            columns = {column[1] for column in cursor.fetchall()}
-            if COLUMN in columns:
-                cursor.execute(f"SELECT DISTINCT {COLUMN} FROM {table_name};")
-                sample_hashes.update(h[0] for h in cursor.fetchall())
+        cursor.execute(stmt)
+        sample_hashes.update(h[0] for h in cursor.fetchall())
         cursor.close()
     for s in sample_hashes:
         print(s)
