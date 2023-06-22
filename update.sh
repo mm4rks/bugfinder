@@ -82,6 +82,18 @@ else
     echo "[-] samples.sqlite3 does not exist..."
 fi
 
+
+# save relevant samples (linked on webapp)
+if [ -f "data/filtered.sqlite3" ]; then
+    source "$(pwd)/.venv/bin/activate"
+    mkdir -p data/relevant_samples
+    for i in $(python filter.py -i data/filtered.sqlite3 --list); do 
+        cp data/samples/$i data/relevant_samples
+    done
+    deactivate
+    rmdir infolder && mv data/samples infolder && mv data/relevant_samples data/samples
+fi
+
 echo "[+] building dewolf"
 update_dewolf
 
