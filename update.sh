@@ -1,7 +1,7 @@
 #!/bin/env bash
 
-origin="https://github.com/mm4rks/dewolf.git"
-dewolf_repo="$(pwd)/dewolf/repo2"
+origin="https://github.com/fkie-cad/dewolf.git"
+dewolf_repo="$(pwd)/dewolf/repo"
 image_name="bugfinder-dewolf"
 dewolf_branch="main"
 auto_mode=false
