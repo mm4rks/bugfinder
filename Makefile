@@ -44,7 +44,7 @@ install: dewolf build
 
 .PHONY: dewolf
 dewolf:
-	./update.sh
+	./update_dewolf.sh
 
 .PHONY: filter
 filter:
