@@ -88,11 +88,14 @@ class DBFilter:
         """
         Return DataFrame containing summary statistics over all samples
         """
-        commit = self._df.dewolf_current_commit.loc[0]  # just take any commit for now
+        commits = self._df.dewolf_current_commit.unique()
+        if len(commits) != 1:
+            logging.error(f"expect exactly one commit in samples.sqlite3. Got: {commits}")
+            raise ValueError("Non-unique commit data")
         failed_runs = self._df[self._df.is_successful == 0]
         summary = {
             "id": 0,
-            "dewolf_current_commit": commit,
+            "dewolf_current_commit": commits[0],
             "avg_dewolf_decompilation_time": self._df.dewolf_decompilation_time.dropna().mean(),
             "total_functions": len(self._df),
             "total_errors": len(failed_runs),
