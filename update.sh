@@ -80,10 +80,12 @@ if [ -f "data/samples.sqlite3" ]; then
     mv data/samples.sqlite3 data/"${current_commit}.sqlite3"
 else
     echo "[-] samples.sqlite3 does not exist..."
+    exit 1
 fi
 
 
 # save relevant samples (linked on webapp)
+# move samples to infolder for processing
 if [ -f "data/filtered.sqlite3" ]; then
     source "$(pwd)/.venv/bin/activate"
     mkdir -p data/relevant_samples
