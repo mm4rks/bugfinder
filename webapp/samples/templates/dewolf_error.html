@@ -100,6 +100,7 @@
                     <thead>
                         <tr>
                             <th scope="col">Exception</th>
+                            <th scope="col">Commit</th>
                             <th scope="col">Platform</th>
                             <th scope="col">Function</th>
                             <th scope="col">Size</th>
@@ -111,7 +112,12 @@
                                 onclick="window.location='{% url 'dewolf_error' related_case.id %}';">
                                 <td class="truncate">
                                     <code>
-                                        {{ related_case.dewolf_exception }}
+                                        {{ related_case.dewolf_exception|truncatechars:90 }}
+                                    </code>
+                                </td>
+                                <td class="truncate">
+                                    <code>
+                                        {{ related_case.dewolf_current_commit }}
                                     </code>
                                 </td>
                                 <td class="truncate">
@@ -121,7 +127,7 @@
                                 </td>
                                 <td class="truncate">
                                     <code>
-                                        {{ related_case.function_name|truncatechars:30 }}
+                                        {{ related_case.function_name|truncatechars:20 }}
                                     </code>
                                 </td>
                                 <td>{{ related_case.function_basic_block_count }}</td>

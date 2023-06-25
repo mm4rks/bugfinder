@@ -1,11 +1,11 @@
 {% extends "base.html" %}
 {% block content %}
-    {% if dewolf_errors %}
         <div class="container">
             <h3>dewolf errors <code><a href="https://github.com/fkie-cad/dewolf/commits/main" class="text-decoration-none">{{ summary.dewolf_current_commit }}</a></code></h3>
             <p>
-                Errors are grouped by exception type, filename, and line number. Size is measured by the count of basic blocks in the decompiled function.
+                Errors are grouped by exception type, filename, and line number. Size is measured by the count of basic blocks in the decompiled function. Only errors for the current commit are shown here.
             </p>
+            {% if dewolf_errors %}
             <table class="table table-hover">
                 <thead>
                     <tr>
@@ -40,6 +40,6 @@
             </table>
         </div>
     {% else %}
-        <p>No errors</p>
+    <p>No errors for <code>{{ summary.dewolf_current_commit }}</code>.</p>
     {% endif %}
 {% endblock content %}
