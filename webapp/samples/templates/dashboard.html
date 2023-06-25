@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-lg">
+            <h3>Dashboard</h3>
+            <p>Last heartbeat {{ heartbeat_delta_seconds }}s ago.</p>
+            <pre><code>{{ health_stats }}</code></pre>
+        </div>
+    </div>
+</div>
+{% endblock content %}

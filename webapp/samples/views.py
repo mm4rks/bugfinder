@@ -15,6 +15,7 @@ from django.template import loader
 
 from .github import Github
 from .models import DewolfError, GitHubIssue, Summary
+from .utils import get_health
 
 
 @login_required
@@ -22,6 +23,9 @@ def index(request):
     """
     Index view, list smallest cases per case group
     """
+    # current dewolf commit
+    summary = Summary.objects.using("samples").all().first()
+
     # select the smallest representative from a case group
     failed_cases = DewolfError.objects.using("samples").filter(is_successful=False)
     subquery_min_ids = failed_cases.filter(case_group=OuterRef("case_group")).order_by("function_basic_block_count").values("id")
@@ -35,7 +39,17 @@ def index(request):
         issue_html_url=Coalesce(Subquery(github_issue_subquery.values("html_url")[:1]), Value("", output_field=TextField())),
     )
     template = loader.get_template("index.html")
-    context = {"dewolf_errors": min_dewolf_exceptions}
+    context = {"dewolf_errors": min_dewolf_exceptions, "summary": summary}
+    return HttpResponse(template.render(context, request))
+
+
+@login_required
+def dashboard(request):
+    last_heartbeat, health_stats = get_health(Path(settings.BASE_DIR) / "data/healthcheck.txt")
+    print("DBG", last_heartbeat, health_stats)
+    template = loader.get_template("dashboard.html")
+    last_heartbeat_delta = datetime.now() - datetime.fromtimestamp(last_heartbeat)
+    context = {"health_stats": health_stats, "heartbeat_delta_seconds": int(last_heartbeat_delta.total_seconds())}
     return HttpResponse(template.render(context, request))
 
 
@@ -62,8 +76,7 @@ def dewolf_error(request, row_id):
 @login_required
 def samples(request):
     summary = Summary.objects.using("samples").all().first()
-    average_duration = Sample.objects.using("samples").aggregate(avg_duration=Avg("duration_seconds"))
-    context = {"summary": summary, "avg_duration": average_duration["avg_duration"]}
+    context = {"summary": summary, "avg_duration": "not implemented"}
     template = loader.get_template("samples.html")
     return HttpResponse(template.render(context, request))
 
