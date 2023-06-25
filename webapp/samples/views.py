@@ -27,7 +27,7 @@ def index(request):
     summary = Summary.objects.using("samples").all().first()
 
     # select the smallest representative from a case group
-    failed_cases = DewolfError.objects.using("samples").filter(is_successful=False)
+    failed_cases = DewolfError.objects.using("samples").filter(is_successful=False).filter(dewolf_current_commit=summary.dewolf_current_commit)
     subquery_min_ids = failed_cases.filter(case_group=OuterRef("case_group")).order_by("function_basic_block_count").values("id")
     min_dewolf_exceptions = failed_cases.filter(id=Subquery(subquery_min_ids[:1])).order_by("-errors_per_group_count_pre_filter")
 
