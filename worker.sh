@@ -93,6 +93,6 @@ while [[ true ]]; do
         docker ps > data/healthcheck.txt
     done
     touch data/idle
-    sleep 6
+    sleep 300
     ./update.sh -y
 done

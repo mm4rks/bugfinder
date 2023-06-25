@@ -27,7 +27,9 @@ def index(request):
     summary = Summary.objects.using("samples").all().first()
 
     # select the smallest representative from a case group
-    failed_cases = DewolfError.objects.using("samples").filter(is_successful=False).filter(dewolf_current_commit=summary.dewolf_current_commit)
+    failed_cases = (
+        DewolfError.objects.using("samples").filter(is_successful=False).filter(dewolf_current_commit=summary.dewolf_current_commit)
+    )
     subquery_min_ids = failed_cases.filter(case_group=OuterRef("case_group")).order_by("function_basic_block_count").values("id")
     min_dewolf_exceptions = failed_cases.filter(id=Subquery(subquery_min_ids[:1])).order_by("-errors_per_group_count_pre_filter")
 
@@ -43,13 +45,21 @@ def index(request):
     return HttpResponse(template.render(context, request))
 
 
+def timestamp_to_elapsed_seconds(timestamp) -> int:
+    delta_seconds = (datetime.now() - datetime.fromtimestamp(timestamp)).total_seconds()
+    return int(delta_seconds)
+
+
 @login_required
 def dashboard(request):
     last_heartbeat, health_stats = get_health(Path(settings.BASE_DIR) / "data/healthcheck.txt")
-    print("DBG", last_heartbeat, health_stats)
+    last_idle, _ = get_health(Path(settings.BASE_DIR) / "data/idle")
     template = loader.get_template("dashboard.html")
-    last_heartbeat_delta = datetime.now() - datetime.fromtimestamp(last_heartbeat)
-    context = {"health_stats": health_stats, "heartbeat_delta_seconds": int(last_heartbeat_delta.total_seconds())}
+    context = {
+        "health_stats": health_stats,
+        "heartbeat_delta_seconds": timestamp_to_elapsed_seconds(last_heartbeat),
+        "idle_delta_seconds": timestamp_to_elapsed_seconds(last_idle),
+    }
     return HttpResponse(template.render(context, request))
 
 

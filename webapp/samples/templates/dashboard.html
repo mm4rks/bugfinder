@@ -4,7 +4,8 @@
     <div class="row">
         <div class="col-lg">
             <h3>Dashboard</h3>
-            <p>Last heartbeat {{ heartbeat_delta_seconds }}s ago.</p>
+            <p>Last heartbeat <b>{{ heartbeat_delta_seconds }}</b> seconds ago.</p>
+            <p>Last idle <b>{{ idle_delta_seconds }}</b> seconds ago.</p>
             <pre><code>{{ health_stats }}</code></pre>
         </div>
     </div>
