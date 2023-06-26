@@ -61,6 +61,7 @@ class DBFilter:
     def from_file(cls, file_path):
         with sqlite3.connect(file_path) as con:
             df = read_sql_query(cls.QUERY, con)
+            df["timestamp"] = to_datetime(df["timestamp"], format="mixed")
         return cls(df)
 
     @staticmethod
@@ -104,6 +105,30 @@ class DBFilter:
             "processed_samples": len(self._df.sample_hash.unique()),
         }
         return DataFrame(summary, index=[0])
+
+    def _get_samples(self) -> DataFrame:
+        """
+        Return DataFrame containing per sample statistics
+        """
+        unique_lst_to_str = lambda x: ",".join(iter(unique(x)))
+        samples = (
+            self._df.groupby(["sample_hash", "dewolf_current_commit"])
+            .agg(
+                platform=("function_platform", unique_lst_to_str),
+                binaryninja_version=("binaryninja_version", unique_lst_to_str),
+                count_error=("is_successful", lambda x: sum(x == 0)),
+                count_success=("is_successful", lambda x: sum(x == 1)),
+                count_total_processed=("is_successful", "count"),
+                timestamp=("timestamp", "min"),
+                duration_seconds=("timestamp", lambda x: (x.max() - x.min()).total_seconds()),
+                dewolf_max_basic_blocks=("dewolf_max_basic_blocks", lambda x: x.iloc[0]),
+                sample_total_function_count=("sample_total_function_count", lambda x: x.iloc[0]),
+                sample_decompilable_function_count=("sample_decompilable_function_count", lambda x: x.iloc[0]),
+            )
+            .reset_index()
+        )
+        samples["id"] = samples.index
+        return samples
 
     def _get_filtered(self) -> DataFrame:
         """
@@ -149,6 +174,12 @@ class DBFilter:
         return self._summary
 
     @property
+    def samples(self) -> DataFrame:
+        if self._summary is None:
+            self._summary = self._get_samples()
+        return self._summary
+
+    @property
     def filtered(self) -> DataFrame:
         if self._filtered is None:
             self._filtered = self._get_filtered()
@@ -168,7 +199,7 @@ class DBFilter:
 
 
 def print_sample_hashes(db_file: Path):
-    """Print all sample hashes contained in DB file"""
+    """Print all sample hashes contained in dewolf_errors table"""
     sample_hashes = set()
     stmt = "SELECT DISTINCT sample_hash FROM dewolf_errors;"
     with sqlite3.connect(db_file) as con:
@@ -178,6 +209,16 @@ def print_sample_hashes(db_file: Path):
         cursor.close()
     for s in sample_hashes:
         print(s)
+
+
+def print_slow_sample_hashes(db_file: Path, duration: int):
+    """Given path to samples.sqlite3 and duration in seconds:
+    print sample hashes of samples that contain a function with decompilation time of more than 'duration' seconds"""
+    df = DBFilter.from_file(db_file)._df
+    diff_shift = lambda x: x["timestamp"].diff().shift(-1).dt.total_seconds()
+    df["duration_seconds"] = df.groupby("sample_hash").apply(diff_shift).droplevel(0).fillna(-1).astype("int")
+    for sample_hash in df[df.duration_seconds >= duration]["sample_hash"].unique():
+        print(sample_hash)
 
 
 def existing_file(path):
@@ -199,12 +240,14 @@ def parse_arguments() -> argparse.Namespace:
         help="File path of filtered output (SQLite file, default: filtered.sqlite3)",
     )
     parser.add_argument("-l", "--list", action="store_true", help="List sample hashes contained in SQLite DB")
-    # TODO
-    # parser.add_argument("--verbose", "-v", dest="verbose", action="count", help="Set logging verbosity (-vvv)", default=0)
+    parser.add_argument("-s", "--slow", type=int, help="List samples with functions that take more than X seconds.")
     return parser.parse_args()
 
 
 def main(args: argparse.Namespace) -> int:
+    if args.slow is not None:
+        print_slow_sample_hashes(args.input, args.slow)
+        return 0
     if args.list:
         print_sample_hashes(args.input)
         return 0
