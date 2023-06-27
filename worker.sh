@@ -78,16 +78,16 @@ run_task () {
 refill_infolder () {
     # save relevant samples (linked on webapp)
     # move samples to infolder for processing
-    echo "[+] refilling infolder (saving relevant samples)"
-    mkdir -p data/relevant_samples
+    echo "[+] refilling infolder and copying relevant samples straight to data/samples"
+    rmdir infolder && mv data/samples infolder
+    mkdir -p data/samples
     if [ -f "data/filtered.sqlite3" ]; then
         source "$(pwd)/.venv/bin/activate"
         for i in $(python filter.py -i data/filtered.sqlite3 --list); do 
-            cp data/samples/$i data/relevant_samples
+            cp infolder/$i data/samples
         done
         deactivate
     fi
-    rmdir infolder && mv data/samples infolder && mv data/relevant_samples data/samples
 }
 
 set -o pipefail
