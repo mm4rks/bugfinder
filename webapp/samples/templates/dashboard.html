@@ -6,7 +6,8 @@
             <h3>Dashboard</h3>
             <p>Last heartbeat <b>{{ heartbeat_delta_seconds }}</b> seconds ago.</p>
             <p>Last idle <b>{{ idle_delta_seconds }}</b> seconds ago.</p>
-            <pre><code>{{ health_stats }}</code></pre>
+            <div class="container"><pre><code>{{ health_stats }}</code></pre></div>
+            <div class="container"><pre><code>{{ progress_log }}</code></pre></div>
         </div>
     </div>
 </div>

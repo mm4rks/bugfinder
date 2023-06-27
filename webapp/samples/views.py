@@ -7,7 +7,7 @@ from django.conf import Path, settings
 from django.contrib.auth.decorators import login_required
 from django.db import connections
 from django.db.models import (Avg, CharField, Count, IntegerField, OuterRef,
-                              Subquery, TextField, Value)
+                              Subquery, TextField, Value, Q)
 from django.db.models.functions import Coalesce
 from django.http import FileResponse, Http404, HttpResponse
 from django.shortcuts import redirect
@@ -15,7 +15,7 @@ from django.template import loader
 
 from .github import Github
 from .models import DewolfError, GitHubIssue, Summary
-from .utils import get_health
+from .utils import get_file_last_modified_and_content, get_last_line, is_hex
 
 
 @login_required
@@ -52,14 +52,30 @@ def timestamp_to_elapsed_seconds(timestamp) -> int:
 
 @login_required
 def dashboard(request):
-    last_heartbeat, health_stats = get_health(Path(settings.BASE_DIR) / "data/healthcheck.txt")
-    last_idle, _ = get_health(Path(settings.BASE_DIR) / "data/idle")
+    last_heartbeat, health_stats = get_file_last_modified_and_content(Path(settings.BASE_DIR) / "data/healthcheck.txt")
+    last_idle, _ = get_file_last_modified_and_content(Path(settings.BASE_DIR) / "data/idle")
+    progress_log = get_last_line(Path(settings.BASE_DIR) / "data/progress.log")
     template = loader.get_template("dashboard.html")
     context = {
         "health_stats": health_stats,
+        "progress_log": progress_log,
         "heartbeat_delta_seconds": timestamp_to_elapsed_seconds(last_heartbeat),
         "idle_delta_seconds": timestamp_to_elapsed_seconds(last_idle),
     }
+    return HttpResponse(template.render(context, request))
+
+
+@login_required
+def search(request):
+    query = request.GET.get("q")
+    template = loader.get_template("search.html")
+    if is_hex(query) and len(query) >= 4:
+        results = DewolfError.objects.using("samples").filter(sample_hash__startswith=query)
+    else:
+        results = DewolfError.objects.using("samples").filter(
+                Q(dewolf_exception__icontains=query) | Q(dewolf_traceback__icontains=query))
+
+    context = {"results": results}
     return HttpResponse(template.render(context, request))
 
 
@@ -94,14 +110,6 @@ def samples(request):
 @login_required
 def download_sample(request, sample_hash):
     """Given sample hash, download zipped (and password protected) sample"""
-
-    def is_hex(value):
-        """Fast check if hex for small strings (<100)"""
-        try:
-            int(value, 16)
-            return True
-        except ValueError:
-            return False
 
     if not is_hex(sample_hash):
         raise Http404()

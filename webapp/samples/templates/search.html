@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-lg">
+            <h3>Search Results</h3>
+    {% if results %}
+        <div class="row pt-5">
+            <div class="col-12">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th scope="col">Exception</th>
+                            <th scope="col">Commit</th>
+                            <th scope="col">Platform</th>
+                            <th scope="col">Function</th>
+                            <th scope="col">Size</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for dewolf_error in results %}
+                            <tr class="clickable"
+                                onclick="window.location='{% url 'dewolf_error' dewolf_error.id %}';">
+                                <td class="truncate">
+                                    <code>
+                                        {{ dewolf_error.dewolf_exception|truncatechars:90 }}
+                                    </code>
+                                </td>
+                                <td class="truncate">
+                                    <code>
+                                        {{ dewolf_error.dewolf_current_commit }}
+                                    </code>
+                                </td>
+                                <td class="truncate">
+                                    <code>
+                                        {{ dewolf_error.function_platform }}
+                                    </code>
+                                </td>
+                                <td class="truncate">
+                                    <code>
+                                        {{ dewolf_error.function_name|truncatechars:20 }}
+                                    </code>
+                                </td>
+                                <td>{{ dewolf_error.function_basic_block_count }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock content %}
