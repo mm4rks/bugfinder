@@ -5,7 +5,7 @@ max_size=90000
 image_name="bugfinder-dewolf"
 dewolf_repo="$(pwd)/dewolf/repo"
 dewolf_branch="main"
-max_workers=12
+max_workers=16
 max_time=3600
 
 
