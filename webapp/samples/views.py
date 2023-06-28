@@ -114,13 +114,15 @@ def download_sample(request, sample_hash):
     if not is_hex(sample_hash):
         raise Http404()
 
+    if not (sample_file := Path(settings.SAMPLE_DIR) / sample_hash).exists():
+        sample_file = Path(settings.SAMPLE_COLD_STORAGE) / sample_hash
+
     with tempfile.TemporaryDirectory() as tdir:
-        sample_file = Path(settings.SAMPLE_DIR) / sample_hash
         zip_path = Path(tdir) / f"{sample_hash}.zip"
         try:
             pyminizip.compress(sample_file.as_posix(), None, zip_path.as_posix(), settings.ZIP_PASSWORD, settings.ZIP_COMPRESSION_LEVEL)
         except OSError:
-            raise Http404("sample does not exist (OSError)")
+            raise Http404("sample does not exist")
         return FileResponse(open(zip_path, "rb"), as_attachment=True, filename=f"{sample_hash}.zip")
 
 
