@@ -133,7 +133,6 @@ while [[ true ]]; do
         source "$(pwd)/.venv/bin/activate"
         python filter.py -i data/samples.sqlite3 -o data/filtered.sqlite3
         deactivate
-        exit 42
         mv --backup=numbered data/samples.sqlite3 data/"${current_commit}.sqlite3"
     else
         echo "[-] samples.sqlite3 does not exist..."
