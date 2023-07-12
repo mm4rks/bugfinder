@@ -1,4 +1,5 @@
 import logging
+import shutil
 import tempfile
 from datetime import datetime
 
@@ -6,16 +7,16 @@ import pyminizip
 from django.conf import Path, settings
 from django.contrib.auth.decorators import login_required
 from django.db import connections
-from django.db.models import (Avg, CharField, Count, IntegerField, OuterRef,
-                              Subquery, TextField, Value, Q)
+from django.db.models import (Avg, CharField, Count, IntegerField, OuterRef, Q,
+                              Subquery, TextField, Value)
 from django.db.models.functions import Coalesce
-from django.http import FileResponse, Http404, HttpResponse
+from django.http import FileResponse, Http404, HttpResponse, JsonResponse
 from django.shortcuts import redirect
 from django.template import loader
 
 from .github import Github
 from .models import DewolfError, GitHubIssue, Summary
-from .utils import get_file_last_modified_and_content, get_last_line, is_hex
+from .utils import get_file_last_modified_and_content, get_last_line, is_hex, sha256sum, unzip_flat
 
 
 @login_required
@@ -72,8 +73,7 @@ def search(request):
     if is_hex(query) and len(query) >= 4:
         results = DewolfError.objects.using("samples").filter(sample_hash__startswith=query)
     else:
-        results = DewolfError.objects.using("samples").filter(
-                Q(dewolf_exception__icontains=query) | Q(dewolf_traceback__icontains=query))
+        results = DewolfError.objects.using("samples").filter(Q(dewolf_exception__icontains=query) | Q(dewolf_traceback__icontains=query))
 
     context = {"results": results}
     return HttpResponse(template.render(context, request))
@@ -88,7 +88,6 @@ def dewolf_error(request, row_id):
         .exclude(id=row_id)
         .order_by("function_basic_block_count")
     )
-    # get issue
     try:
         issue = GitHubIssue.objects.using("samples").get(case_group=dewolf_error.case_group)
     except GitHubIssue.DoesNotExist:
@@ -205,3 +204,47 @@ def create_github_issue(request, case_id):
         else:
             logging.warning("no issue was created")
         return redirect(request.META["HTTP_REFERER"])
+
+def move_to_coldstorage(file_path: Path):
+    sample_hash = sha256sum(file_path)
+    shutil.move(file_path, Path(settings.SAMPLE_COLD_STORAGE)/sample_hash)
+    return sample_hash
+
+
+def handle_zip_file(zipfile_path):
+    with tempfile.TemporaryDirectory() as tdir:
+        response_data = {"message": "extracted from zip file:", "sample_hashes": []}
+        try:
+            unzip_flat(zipfile_path, tdir, pwd=settings.ZIP_PASSWORD)
+        except Exception as ex:
+            response_data["message"] = str(ex)
+            logging.error(f"unzip: {ex}")
+            return 500, response_data
+        for sample in Path(tdir).iterdir():
+            if not sample.is_file():
+                continue
+            sample_hash = move_to_coldstorage(sample)
+            response_data["sample_hashes"].append(sample_hash)
+        return 200, response_data
+
+def handle_file(file_path):
+    sample_hash = move_to_coldstorage(file_path)
+    response_data = {"message": "uploaded sample hash:", "sample_hashes": [sample_hash]}
+    return 200, response_data
+
+
+@login_required
+def upload(request):
+    if request.method == "POST" and request.FILES:
+        file = request.FILES.get("file")
+
+        with tempfile.NamedTemporaryFile(delete=False) as temp_file:
+            temp_file.write(file.read())
+            temp_file.flush()
+
+            if file.content_type == "application/zip":
+                status, response_data = handle_zip_file(temp_file.name)
+            else:
+                status, response_data = handle_file(temp_file.name)
+            return JsonResponse(response_data, status=status)
+    return JsonResponse({"error": "Invalid request"}, status=400)

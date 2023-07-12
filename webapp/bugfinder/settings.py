@@ -150,8 +150,8 @@ LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = "/accounts/login"
 
 # app settings
-SAMPLE_DIR = "data/samples"
-SAMPLE_COLD_STORAGE = "data/cold_storage"
+SAMPLE_DIR = BASE_DIR / "data/samples"
+SAMPLE_COLD_STORAGE = BASE_DIR / "data/cold_storage"
 ZIP_COMPRESSION_LEVEL = 9
 ZIP_PASSWORD = "infected"
 

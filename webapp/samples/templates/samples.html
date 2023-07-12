@@ -1,59 +1,103 @@
 {% extends "base.html" %}
 {% block content %}
-        <div class="container">
-            <div class="row">
-                <div class="col-sm">
-                    <h3>Stats</h3>
-                    <table class="table">
-                        <thead>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <th scope="row">commit</th>
-                                <td>
-                                    <code>{{ summary.dewolf_current_commit|truncatechars:8 }}</code>
-                                </td>
-                            </tr>
-                            <tr>
-                                <th scope="row">processed samples</th>
-                                <td>{{ summary.processed_samples }}</td>
-                            </tr>
-                            <tr>
-                                <th scope="row">functions decompiled</th>
-                                <td>{{ summary.total_functions }}</td>
-                            </tr>
-                            <tr>
-                                <th scope="row">errors</th>
-                                <td>{{ summary.total_errors }}</td>
-                            </tr>
-                            <tr>
-                                <th scope="row">unique exceptions</th>
-                                <td>{{ summary.unique_exceptions }}</td>
-                            </tr>
-                            <tr>
-                                <th scope="row">unique tracebacks</th>
-                                <td>{{ summary.unique_tracebacks }}</td>
-                            </tr>
-                            <tr>
-                                <th scope="row">&#8960; decompilation time</th>
-                                <td>{{ summary.avg_dewolf_decompilation_time|floatformat:2 }}s</td>
-                            </tr>
-                            <tr>
-                                <th scope="row">&#8960; time  per sample</th>
-                                <td>{{ avg_duration|floatformat:2 }}s</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-                <div class="col-sm">
-                    <form action="/file-upload" class="dropzone border rounded mb-4 my-dropzone pe-auto">
-                        <div class="mb-3 fallback">
-                            <label for="formFile" class="form-label">File upload</label>
-                            <input class="form-control" type="file" id="formFile" multiple />
-                        </div>
-                    </form>
-                    <script>const dropzone = new Dropzone("form.my-dropzone", { url: "/upload" });</script>
-                </div>
+    <div class="container">
+        <div class="row">
+            <div class="col-sm">
+                <h3>Stats</h3>
+                <table class="table">
+                    <thead>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <th scope="row">commit</th>
+                            <td>
+                                <code>{{ summary.dewolf_current_commit|truncatechars:8 }}</code>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row">processed samples</th>
+                            <td>{{ summary.processed_samples }}</td>
+                        </tr>
+                        <tr>
+                            <th scope="row">functions decompiled</th>
+                            <td>{{ summary.total_functions }}</td>
+                        </tr>
+                        <tr>
+                            <th scope="row">errors</th>
+                            <td>{{ summary.total_errors }}</td>
+                        </tr>
+                        <tr>
+                            <th scope="row">unique exceptions</th>
+                            <td>{{ summary.unique_exceptions }}</td>
+                        </tr>
+                        <tr>
+                            <th scope="row">unique tracebacks</th>
+                            <td>{{ summary.unique_tracebacks }}</td>
+                        </tr>
+                        <tr>
+                            <th scope="row">&#8960; decompilation time</th>
+                            <td>{{ summary.avg_dewolf_decompilation_time|floatformat:2 }}s</td>
+                        </tr>
+                        <tr>
+                            <th scope="row">&#8960; time  per sample</th>
+                            <td>{{ avg_duration|floatformat:2 }}s</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="col-sm">
+                <div id="alert-area"></div>
+                <form action="/file-upload"
+                      class="dropzone border rounded mb-4 my-dropzone pe-auto">
+                    <div class="mb-3 fallback">
+                        <label for="formFile" class="form-label">File upload</label>
+                        <input class="form-control" type="file" id="formFile" multiple />
+                    </div>
+                </form>
+                <script>
+                    const dropzone = new Dropzone("form.my-dropzone", { 
+                        url: "upload/",
+                        //disablePreviews: true,
+                        headers: {'X-CSRFToken': '{{ csrf_token }}'},
+                        success: function(file, response){
+                            // Create response element
+                            // Create the alert element
+                            var alertElement = document.createElement("div");
+                            alertElement.classList.add("alert", "alert-success", "alert-dismissible", "fade", "show");
+                            alertElement.setAttribute("role", "alert");
+
+                            // Create the close button
+                            var closeButton = document.createElement("button");
+                            closeButton.classList.add("btn-close");
+                            closeButton.setAttribute("type", "button");
+                            closeButton.setAttribute("data-bs-dismiss", "alert");
+                            closeButton.setAttribute("aria-label", "Close");
+
+                            // Create the alert message
+                            var messageContainer = document.createElement("div");
+                            var messageLine = document.createTextNode(response.message);
+                            messageContainer.appendChild(messageLine);
+                            response.sample_hashes.forEach(function (item, index) {
+                                messageContainer.appendChild(document.createElement("br"));
+                                var messageLine = document.createTextNode(item);
+                                messageContainer.appendChild(messageLine);
+                            });
+
+
+                            // Append the close button and message to the alert element
+                            alertElement.appendChild(closeButton);
+                            alertElement.appendChild(messageContainer);
+
+                            // Get the container where the alerts will be displayed
+                            var alertContainer = document.getElementById("alert-area");
+
+                            // Append the alert element to the container
+                            alertContainer.appendChild(alertElement);
+                            var bootstrapAlert = new bootstrap.Alert(alertElement);
+                        }
+                    });
+                </script>
             </div>
         </div>
+    </div>
 {% endblock content %}
