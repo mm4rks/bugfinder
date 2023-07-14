@@ -16,7 +16,8 @@ from django.template import loader
 
 from .github import Github
 from .models import DewolfError, GitHubIssue, Summary
-from .utils import get_file_last_modified_and_content, get_last_line, is_hex, sha256sum, unzip_flat
+from .utils import (get_file_last_modified_and_content, get_last_line, is_hex,
+                    sha256sum, unzip_flat)
 
 
 @login_required
@@ -166,8 +167,14 @@ def _update_issues():
 
 @login_required
 def update_issues(request):
-    issues = _update_issues()
-    return HttpResponse("\n".join(issues))
+    try:
+        issues = _update_issues()
+        response = {"message": f'Success! {" ".join(issues)}', "status": 200}
+    except Exception as ex:
+        response = {"message": f"ERROR: {ex}", "status": 500}
+    context = {"response": response}
+    template = loader.get_template("update.html")
+    return HttpResponse(template.render(context, request))
 
 
 @login_required
@@ -205,9 +212,10 @@ def create_github_issue(request, case_id):
             logging.warning("no issue was created")
         return redirect(request.META["HTTP_REFERER"])
 
+
 def move_to_coldstorage(file_path: Path):
     sample_hash = sha256sum(file_path)
-    shutil.move(file_path, Path(settings.SAMPLE_COLD_STORAGE)/sample_hash)
+    shutil.move(file_path, Path(settings.SAMPLE_COLD_STORAGE) / sample_hash)
     return sample_hash
 
 
@@ -226,6 +234,7 @@ def handle_zip_file(zipfile_path):
             sample_hash = move_to_coldstorage(sample)
             response_data["sample_hashes"].append(sample_hash)
         return 200, response_data
+
 
 def handle_file(file_path):
     sample_hash = move_to_coldstorage(file_path)

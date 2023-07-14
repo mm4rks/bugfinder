@@ -1,14 +1,26 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="container">
-    <div class="row">
-        <div class="col-lg">
-            <h3>Dashboard</h3>
-            <p>Last heartbeat <b>{{ heartbeat_delta_seconds }}</b> seconds ago.</p>
-            <p>Last idle <b>{{ idle_delta_seconds }}</b> seconds ago.</p>
-            <div class="container"><pre><code>{{ health_stats }}</code></pre></div>
-            <div class="container"><pre><code>{{ progress_log }}</code></pre></div>
+    <div class="container">
+        <div class="row">
+            <div class="col-lg">
+                <h3>Dashboard</h3>
+                <p>
+                    Last heartbeat <b>{{ heartbeat_delta_seconds }}</b> seconds ago.
+                </p>
+                <p>
+                    Last idle <b>{{ idle_delta_seconds }}</b> seconds ago.
+                </p>
+                <div class="container">
+                    <pre><code>{{ health_stats }}</code></pre>
+                </div>
+                <div class="container">
+                    <pre><code>{{ progress_log }}</code></pre>
+                </div>
+            </div>
         </div>
+        <form method="post" action="{% url 'update' %}">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-primary btn-sm">Update Issues Status</button>
+        </form>
     </div>
-</div>
 {% endblock content %}

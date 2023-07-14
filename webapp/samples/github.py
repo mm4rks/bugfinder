@@ -23,6 +23,7 @@ class Github:
                 yield issue
         else:
             logging.error(f"Failed to retrieve issues. Response: {response.text}")
+            raise RuntimeError(f"GitHub Issues: {response.text}")
 
     @property
     def existing_issue_titles_to_issue_map(self) -> dict:
