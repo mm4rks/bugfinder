@@ -108,12 +108,13 @@
                     </thead>
                     <tbody>
                         {% for related_case in related_cases %}
-                            <tr class="clickable"
-                                onclick="window.location='{% url 'dewolf_error' related_case.id %}';">
+                            <tr>
                                 <td class="truncate">
+                                    <a class="pe-3 text-decoration-none" href="{% url 'dewolf_error' related_case.id %}">
                                     <code>
                                         {{ related_case.dewolf_exception|truncatechars:90 }}
                                     </code>
+                                    </a>
                                 </td>
                                 <td class="truncate">
                                     <code>
