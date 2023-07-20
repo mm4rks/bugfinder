@@ -90,7 +90,7 @@ def dewolf_error(request, row_id):
         .order_by("function_basic_block_count")
     )
     try:
-        issue = GitHubIssue.objects.using("samples").get(case_group=dewolf_error.case_group)
+        issue = GitHubIssue.objects.using("samples").filter(case_group=dewolf_error.case_group).first()
     except GitHubIssue.DoesNotExist:
         issue = None
 
