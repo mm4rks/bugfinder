@@ -120,48 +120,7 @@ while [[ true ]]; do
         docker ps > data/healthcheck.txt
     done
     docker_wait_image
-    touch data/idle
-
-    # gather data from samples.sqlite3
-    # append data to filtered.sqlite3
-    # rotate samples.sqlite3
-    if [ -f "data/samples.sqlite3" ]; then
-        if [ -f "data/filtered.sqlite3" ]; then
-            cp data/filtered.sqlite3 data/filtered.sqlite3.bak
-        fi
-        echo "[+] filtering and moving samples.sqlite3"
-        source "$(pwd)/.venv/bin/activate"
-        python filter.py -i data/samples.sqlite3 -o data/filtered.sqlite3
-        deactivate
-        mv --backup=numbered data/samples.sqlite3 data/"${current_commit}.sqlite3"
-    else
-        echo "[-] samples.sqlite3 does not exist..."
-    fi
-
-    # get local and remote commits
-    pushd "${dewolf_repo}"
-    git checkout "${dewolf_branch}"
-    git fetch
-    current_commit="$(git rev-parse HEAD)"
-    upstream_commit=$(git rev-parse "${dewolf_branch}"@{upstream})
-    popd
     
-    # update and refill queue if new version
-    if [ "${current_commit}" != "${upstream_commit}" ]; then
-        echo "[+] updating dewolf"
-        ./update_dewolf.sh
-        # check if update worked
-        pushd "${dewolf_repo}"
-        new_commit="$(git rev-parse HEAD)"
-        popd
-        if [ "${upstream_commit}" != "${new_commit}" ]; then
-            echo "[-] updating dewolf failed!"
-            exit 1
-        fi
-        refill_infolder
-    fi
-
-
     echo "[+] idle sleep"
     sleep 300
 done
