@@ -1,7 +1,8 @@
 #!/bin/env bash
 
 infolder=./infolder
-max_size=90000
+# increase sample size to 5 MB
+max_size=5242880
 image_name="bugfinder-dewolf"
 dewolf_repo="$(pwd)/dewolf/repo"
 dewolf_branch="main"
