@@ -7,7 +7,7 @@ image_name="bugfinder-dewolf"
 dewolf_repo="$(pwd)/dewolf/repo"
 dewolf_branch="main"
 max_workers=20
-max_time=3600
+max_time=600
 
 
 if [ "${EUID}" -ne 0 ]; then 
