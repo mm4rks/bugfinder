@@ -6,7 +6,7 @@ max_size=5242880
 image_name="bugfinder-dewolf"
 dewolf_repo="$(pwd)/dewolf/repo"
 dewolf_branch="main"
-max_workers=20
+max_workers=30
 max_time=600
 
 
@@ -72,7 +72,7 @@ run_task () {
     # docker run task in background
     local sample_hash=$1
     local command="python decompiler/util/bugfinder/bugfinder.py /data/samples/${sample_hash} --sqlite-file /data/samples.sqlite3"
-    docker run -d --mount type=bind,source="$(pwd)/data",target=/data \
+    docker run --rm --detach --mount type=bind,source="$(pwd)/data",target=/data \
         ${image_name} timeout ${max_time} ${command}
 }
 
