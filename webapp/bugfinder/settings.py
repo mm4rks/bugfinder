@@ -25,7 +25,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.environ['SECRET_KEY']
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ['DJANGO_DEBUG'] == 'True'
+DEBUG = True
 
 ALLOWED_HOSTS = os.environ['DJANGO_ALLOWED_HOSTS'].split(" ")
 
@@ -40,17 +40,28 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "debug_toolbar",
 ]
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
+    "debug_toolbar.middleware.DebugToolbarMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
+
+INTERNAL_IPS = [
+    '127.0.0.1',
+    "0.0.0.0",
+]
+
+DEBUG_TOOLBAR_CONFIG = {
+    'SHOW_TOOLBAR_CALLBACK': lambda request: True,
+}
 
 ROOT_URLCONF = "bugfinder.urls"
 
@@ -132,8 +143,8 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 #github
 GITHUB_TOKEN = os.environ.get('GITHUB_TOKEN', "none")
-GITHUB_REPO_OWNER = os.environ['GITHUB_REPO_OWNER']
-GITHUB_REPO_NAME = os.environ['GITHUB_REPO_NAME']
+GITHUB_REPO_OWNER = os.environ.get('GITHUB_REPO_OWNER', "none")
+GITHUB_REPO_NAME = os.environ.get('GITHUB_REPO_NAME', "none")
 
 # email
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
