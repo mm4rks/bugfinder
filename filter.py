@@ -51,6 +51,14 @@ class DBFilter:
         )
     """
 
+    # TODO create indices on filtered.sqlite3
+    INDEX_CREATION = """
+       CREATE INDEX idx_dewolf_errors_is_successful ON dewolf_errors(is_successful);
+       CREATE INDEX idx_dewolf_errors_dewolf_current_commit ON dewolf_errors(dewolf_current_commit);
+       CREATE INDEX idx_dewolf_errors_case_group ON dewolf_errors(case_group);
+       CREATE INDEX idx_dewolf_function_basic_block_count ON dewolf_errors(function_basic_block_count);
+    """
+
     def __init__(self, df: DataFrame):
         self._summary = None
         self._filtered = None
