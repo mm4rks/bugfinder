@@ -149,11 +149,23 @@ class DBFilter:
         )
         errors_per_group_count = failed_runs["case_group"].value_counts()
         failed_runs["errors_per_group_count_pre_filter"] = failed_runs["case_group"].map(errors_per_group_count)
+        # truncate traceback
+        failed_runs["dewolf_traceback"] = failed_runs["dewolf_traceback"].apply(self.truncate_middle)
         # filter n smallest unique per exception and traceback
         f = lambda x: x.nsmallest(10, "function_basic_block_count")
         filtered_df = failed_runs.groupby(["dewolf_exception", "dewolf_traceback"]).apply(f)
         assert isinstance(filtered_df, DataFrame)
         return filtered_df.reset_index(drop=True)
+
+    @staticmethod
+    def truncate_middle(s, n=4000, indicator="... TRUNCATED ..."):
+        """
+        Truncate the middle part of a string if its length exceeds n characters.
+        """
+        if not s or len(s) <= n:
+            return s
+        half_n = (n - len(indicator)) // 2
+        return s[:half_n] + "\n" + indicator + "\n" + s[-half_n:]
 
     @staticmethod
     def _get_last_file_path(traceback: str) -> str:
