@@ -4,7 +4,7 @@
 
 Alongside its core functionalities, BugFinder features a Django-based web application to visualize the categorized crashes and minimal samples. 
 
-> **Data Store:** Processed binaries are archived in the `data/samples` directory and can be accessed through the web application. Samples to be processed are stored in the `infolder/` directory. After a complete run, i.e., `infolder/` is empty, the `infolder/` will be populated with processed samples from `data/samples` again.
+**Data Store:** Processed binaries are archived in the `data/samples` directory and can be accessed through the web application. Samples to be processed are stored in the `infolder/` directory. After a complete run, i.e., `infolder/` is empty, the `infolder/` will be populated with processed samples from `data/samples` again.
 Binary samples that should not be part of this iteration but still be available through web download are stored in `data/cold_storage`.
 
 ## 🛠 Requirements
@@ -70,3 +70,11 @@ GITHUB_REPO_NAME="dewolf"
 
 The script `apt_downloader.sh` offers a utility for downloading ELF binary files from the Ubuntu APT repository.
 This tool fetches Debian packages and extracts the embedded ELF files. To keep track of the processed files, it records the last processed line number in a progress file. All extracted files are saved in the `infolder/` directory.
+
+_Progress logging_ can be done with the `progress.sh` script. This periodically prints the number of files within `infolder/`, memory usage, and size of `data/samples.sqlite3`. When invoking this script with
+
+```bash
+./progress.sh | tee -a data/progress.log
+```
+
+the currect stats are displayed on the web interface dashboard.
