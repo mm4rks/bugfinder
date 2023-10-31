@@ -1,46 +1,72 @@
-# bugfinder
+# BugFinder
 
-The bugfinder project is a tool designed to find crashes in the dewolf decompiler project.
-It achieves this by utilizing the 'bugfinder.py' (located in the dewolf project) on a large corpus of sample binaries.
-The tool identifies crashes and groups them by exception type. Additionally, it identifies the minimal crashing samples, which are functions with the fewest basic blocks.
+**BugFinder** is a tool designed to detect crashes in the [dewolf decompiler](https://github.com/fkie-cad/dewolf) project. It runs `bugfinder.py` from the dewolf project on a set of binary samples, grouping detected crashes by exception types and traceback. Notably, it highlights the minimal crashing samples, i.e., the functions with the fewest basic blocks. Minimal crashes are accessible via the web interface. Corresponding issues can be opened directly on the dewolf GitHub repository by integrating with the GitHub API.
 
-The bugfinder project incorporates a web application built with Django, where the grouped crashes and minimal crashing samples are displayed.
-The tool relies on the Makefile for simplified execution of common tasks.
+Alongside its core functionalities, BugFinder features a Django-based web application to visualize the categorized crashes and minimal samples. 
 
-Processed binaries are stored in `data/samples` and can be downloaded with the web app.
+> **Data Store:** Processed binaries are archived in the `data/samples` directory and can be accessed through the web application. Samples to be processed are stored in the `infolder/` directory. After a complete run, i.e., `infolder/` is empty, the `infolder/` will be populated with processed samples from `data/samples` again.
+Binary samples that should not be part of this iteration but still be available through web download are stored in `data/cold_storage`.
 
+## 🛠 Requirements
 
-## Requirements
-
-To use the bugfinder project, ensure that you have the following dependencies installed:
+Before getting started with BugFinder, ensure your system meets the following prerequisites:
 
 - Docker Compose
-- Python and pandas
+- Python 
+- Pandas library
 
-## Usage Instructions
+## 🚀 Getting Started
 
-The project provides several targets in the Makefile to facilitate usage:
+For easy installation, use `make install PROD=1`. This will:
+Build dewolf image 
+Build web containers
+Register `systemd` services.
 
-- Start the web application in the specified environment (development or production).
-  - Dev: `make`
-  - Production: `make PROD=1`
-
-- **install**: Set up the project for the specified environment, including directory and file creation, migrations, and static file collection. It optionally installs a worker service.
-  - Default: `make install`
-  - Production: `make install PROD=1`
-
-- **filter**: Execute a Python script to filter data to be displayed by the web application. Requires the input database (`data/samples.sqlite3`) created by the `worker.sh` script.
-  - Command: `make filter`
-
-To start the decompilation worker, execute `./worker.sh`. The worker will monitor `infolder/` for binaries and process them.
-
-If the worker service is registered in systemd, use:
+Start worker and web services via:
 
 ```bash
 sudo systemctl start bugfinder_worker
+sudo systemctl start bugfinder_web
 ```
 
-## Utilities
+### Worker
 
-The bugfinder project includes an utility to download ELF files, implemented in the `apt_downloader.sh` bash script. This utility downloads Debian packages and extracts ELF files from them.
-It maintains progress by tracking the last processed line number in a progress file. The extracted files are saved in the specified `infolder` directory.
+The `worker.sh` bash script processes the binary samples from `infolder/` by starting multiple dewolf docker images. Decompilation results are stored in `data/samples.sqlite3`. For each complete run, this SQLite file is rotated to `data/<dewolf-commit-hash>.sqlite3`, and its filtered contents are appended to `data/filtered.sqlite3`.
+
+The worker script is started by the `bugfinder_worker` service.
+
+### Web Interface
+
+The web interface displays content from `filtered.sqlite3`. To increase performance, make sure this SQLite file has the correct indexes by:
+
+```bash
+sqlite3 data/filtered.sqlite3
+sqlite> 
+       CREATE INDEX idx_dewolf_errors_is_successful ON dewolf_errors(is_successful);
+       CREATE INDEX idx_dewolf_errors_dewolf_current_commit ON dewolf_errors(dewolf_current_commit);
+       CREATE INDEX idx_dewolf_errors_case_group ON dewolf_errors(case_group);
+       CREATE INDEX idx_dewolf_function_basic_block_count ON dewolf_errors(function_basic_block_count);
+```
+
+### Data Filtering
+
+Execute the Python script to curate the data showcased on the web application. The worker script automatically does this after each iteration of sample processing.
+
+```bash
+python filter.py -i data/samples.sqlite3 -o data/filtered.sqlite3
+```
+
+### GitHub API
+
+To allow BugFinder to create issues on the official dewolf repository, provide an API token in the `.env.prod` file, like:
+
+```
+GITHUB_TOKEN=your-token-here
+GITHUB_REPO_OWNER="fkie-cad"
+GITHUB_REPO_NAME="dewolf"
+```
+
+## 📦 Utilities
+
+The script `apt_downloader.sh` offers a utility for downloading ELF binary files from the Ubuntu APT repository.
+This tool fetches Debian packages and extracts the embedded ELF files. To keep track of the processed files, it records the last processed line number in a progress file. All extracted files are saved in the `infolder/` directory.
