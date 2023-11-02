@@ -2,8 +2,6 @@
 
 **BugFinder** is a tool designed to detect crashes in the [dewolf decompiler](https://github.com/fkie-cad/dewolf) project. It runs `bugfinder.py` from the dewolf project on a set of binary samples, grouping detected crashes by exception types and traceback. Notably, it highlights the minimal crashing samples, i.e., the functions with the fewest basic blocks. Minimal crashes are accessible via the web interface. Corresponding issues can be opened directly on the dewolf GitHub repository by integrating with the GitHub API.
 
-Alongside its core functionalities, BugFinder features a Django-based web application to visualize the categorized crashes and minimal samples. 
-
 **Data Store:** Processed binaries are archived in the `data/samples` directory and can be accessed through the web application. Samples to be processed are stored in the `infolder/` directory. After a complete run, i.e., `infolder/` is empty, the `infolder/` will be populated with processed samples from `data/samples` again.
 Binary samples that should not be part of this iteration but still be available through web download are stored in `data/cold_storage`.
 
@@ -18,9 +16,10 @@ Before getting started with BugFinder, ensure your system meets the following pr
 ## 🚀 Getting Started
 
 For easy installation, use `make install PROD=1`. This will:
-Build dewolf image 
-Build web containers
-Register `systemd` services.
+
+- Build the dewolf image 
+- Build web containers
+- Register `systemd` services.
 
 Start worker and web services via:
 
