@@ -6,10 +6,9 @@ from datetime import datetime
 import pyminizip
 from django.conf import Path, settings
 from django.contrib.auth.decorators import login_required
-from django.db import connections
-from django.db.models import (Avg, CharField, Count, IntegerField, OuterRef, Q,
-                              Subquery, TextField, Value)
-from django.db.models.functions import Coalesce
+from django.db.models import (F, CharField, IntegerField, OuterRef, Q,
+                              Subquery, TextField, Value, Window)
+from django.db.models.functions import Coalesce, RowNumber
 from django.http import FileResponse, Http404, HttpResponse, JsonResponse
 from django.shortcuts import redirect
 from django.template import loader
@@ -25,17 +24,25 @@ def index(request):
     """
     Index view, list smallest cases per case group
     """
-    # current dewolf commit
+    # query summary for current dewolf commit
     summary = Summary.objects.using("samples").all().first()
 
     # select the smallest representative from a case group
-    failed_cases = (
-        DewolfError.objects.using("samples").filter(is_successful=False).filter(dewolf_current_commit=summary.dewolf_current_commit)
+    errors_current_commit = (
+        DewolfError.objects.using("samples").filter(dewolf_current_commit=summary.dewolf_current_commit)
     )
-    subquery_min_ids = failed_cases.filter(case_group=OuterRef("case_group")).order_by("function_basic_block_count").values("id")
-    min_dewolf_exceptions = failed_cases.filter(id=Subquery(subquery_min_ids[:1])).order_by("-errors_per_group_count_pre_filter")
+    # annotate each error wit row number, partition by 'case_group', and ordered by #basicblocks
+    rows_minimized_per_group = errors_current_commit.annotate(
+            row_number=Window(
+                expression=RowNumber(),
+                partition_by=[F("case_group")],
+                order_by=F("function_basic_block_count").asc()
+                )
+            )
+    # select representative with least basic blocks, then order by error count descending
+    min_dewolf_exceptions = rows_minimized_per_group.filter(row_number=1).order_by("-errors_per_group_count_pre_filter")
 
-    # Annotate min_dewolf_exceptions with the number and status of GitHubIssue
+    # Annotate min_dewolf_exceptions with the issue number and status of GitHubIssue
     github_issue_subquery = GitHubIssue.objects.using("samples").filter(case_group=OuterRef("case_group")).values("number", "status")
     min_dewolf_exceptions = min_dewolf_exceptions.annotate(
         issue_number=Coalesce(Subquery(github_issue_subquery.values("number")[:1]), Value(None, output_field=IntegerField())),
