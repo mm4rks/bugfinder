@@ -2,6 +2,7 @@ import logging
 import shutil
 import tempfile
 from datetime import datetime
+from collections import defaultdict
 
 import pyminizip
 from django.conf import Path, settings
@@ -42,15 +43,13 @@ def index(request):
     # select representative with least basic blocks, then order by error count descending
     min_dewolf_exceptions = rows_minimized_per_group.filter(row_number=1).order_by("-errors_per_group_count_pre_filter")
 
-    # Annotate min_dewolf_exceptions with the issue number and status of GitHubIssue
-    github_issue_subquery = GitHubIssue.objects.using("samples").filter(case_group=OuterRef("case_group")).values("number", "status")
-    min_dewolf_exceptions = min_dewolf_exceptions.annotate(
-        issue_number=Coalesce(Subquery(github_issue_subquery.values("number")[:1]), Value(None, output_field=IntegerField())),
-        issue_status=Coalesce(Subquery(github_issue_subquery.values("status")[:1]), Value("", output_field=CharField())),
-        issue_html_url=Coalesce(Subquery(github_issue_subquery.values("html_url")[:1]), Value("", output_field=TextField())),
-    )
+    # retrieve all GitHub issues, group them in a default dict by 'case_group'
+    github_issues_by_case_group = defaultdict(list)
+    for issue in GitHubIssue.objects.using("samples").all():
+        github_issues_by_case_group[issue.case_group].append(issue)
+
     template = loader.get_template("index.html")
-    context = {"dewolf_errors": min_dewolf_exceptions, "summary": summary}
+    context = {"dewolf_errors": min_dewolf_exceptions, "summary": summary, "issues": github_issues_by_case_group}
     return HttpResponse(template.render(context, request))
 
 
@@ -95,13 +94,13 @@ def dewolf_error(request, row_id):
         .filter(case_group=dewolf_error.case_group)
         .exclude(id=row_id)
         .order_by("function_basic_block_count")
-    )
+        )[:10]
     try:
-        issue = GitHubIssue.objects.using("samples").filter(case_group=dewolf_error.case_group).first()
+        issues = GitHubIssue.objects.using("samples").filter(case_group=dewolf_error.case_group).all()
     except GitHubIssue.DoesNotExist:
-        issue = None
+        issues = []
 
-    context = {"failed_case": dewolf_error, "related_cases": related_cases, "issue": issue}
+    context = {"failed_case": dewolf_error, "related_cases": related_cases, "issues": issues}
     template = loader.get_template("dewolf_error.html")
     return HttpResponse(template.render(context, request))
 

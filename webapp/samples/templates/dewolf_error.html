@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load encoding %}
+{% load filters %}
 {% block content %}
     {% if failed_case %}
         <div class="container">
@@ -54,14 +54,16 @@
                             <tr>
                                 <th scope="row">GitHub Issue</th>
                                 <td>
-                                    {% if issue %}
-                                        {% if issue.status == "open" %}
-                                            <a class="badge bg-success text-decoration-none" href="{{ issue.html_url }}">Open #{{ issue.number }}</a>
-                                        {% elif issue.status == "in progress" %}
-                                            <a class="badge bg-warning text-decoration-none" href="{{ issue.html_url }}">In Progress #{{ issue.number }}</a>
-                                        {% elif issue.status == "closed" %}
-                                            <a class="badge bg-danger text-decoration-none" href="{{ issue.html_url }}">Closed #{{ issue.number }}</a>
-                                        {% endif %}
+                                    {% if issues %}
+                                        {% for issue in issues %}
+                                            {% if issue.status == "open" %}
+                                                <a class="badge bg-success text-decoration-none" href="{{ issue.html_url }}">Open #{{ issue.number }}</a>
+                                            {% elif issue.status == "in progress" %}
+                                                <a class="badge bg-warning text-decoration-none" href="{{ issue.html_url }}">In Progress #{{ issue.number }}</a>
+                                            {% elif issue.status == "closed" %}
+                                                <a class="badge bg-danger text-decoration-none" href="{{ issue.html_url }}">Closed #{{ issue.number }}</a>
+                                            {% endif %}
+                                        {% endfor %}
                                     {% else %}
                                         <form method="post" action="{% url 'create_github_issue' failed_case.id %}">
                                             {% csrf_token %}

@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load filters %}
 {% block content %}
         <div class="container">
             <h3>dewolf errors <code><a href="https://github.com/fkie-cad/dewolf/commits/main" class="text-decoration-none">{{ summary.dewolf_current_commit }}</a></code></h3>
@@ -21,16 +22,18 @@
                                 <a class="pe-3 text-decoration-none" href="{% url 'dewolf_error' failed_case.id %}">
                                     <code>{{ failed_case.case_group }}</code>
                                 </a>
-                                {% if failed_case.issue_status == "open" %}
-                                    <a class="badge bg-success text-decoration-none"
-                                       href="{{ failed_case.issue_html_url }}">Open #{{ failed_case.issue_number }}</a>
-                                {% elif failed_case.issue_status == "in progress" %}
-                                    <a class="badge bg-warning text-decoration-none"
-                                       href="{{ failed_case.issue_html_url }}">In Progress #{{ failed_case.issue_number }}</a>
-                                {% elif failed_case.issue_status == "closed" %}
-                                    <a class="badge bg-danger text-decoration-none"
-                                       href="{{ failed_case.issue_html_url }}">Closed #{{ failed_case.issue_number }}</a>
-                                {% endif %}
+                                {% for issue in issues|get:failed_case.case_group %}
+                                    {% if issue.status == "open" %}
+                                        <a class="badge bg-success text-decoration-none"
+                                           href="{{ issue.html_url }}">Open #{{ issue.number }}</a>
+                                    {% elif issue.status == "in progress" %}
+                                        <a class="badge bg-warning text-decoration-none"
+                                           href="{{ issue.html_url }}">In Progress #{{ issue.number }}</a>
+                                    {% elif issue.status == "closed" %}
+                                        <a class="badge bg-danger text-decoration-none"
+                                           href="{{ issue.html_url }}">Closed #{{ issue.number }}</a>
+                                    {% endif %}
+                                {% endfor %}
                             </td>
                             <td>{{ failed_case.function_basic_block_count }}</td>
                             <td>{{ failed_case.errors_per_group_count_pre_filter }}</td>
