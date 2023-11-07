@@ -14,6 +14,6 @@ fi
 # Loop through each line in the sample list 
 # and move sample from ./infolder and ./data/samples to ./data/cold_storage
 while IFS= read -r file; do
-    mv "./infolder/$file" "$DEST_DIR" 0> /dev/null
-    mv "./data/samples/$file" "$DEST_DIR" 0> /dev/null
+    mv "./infolder/$file" "$DEST_DIR"
+    mv "./data/samples/$file" "$DEST_DIR"
 done < "$FILE_LIST"
