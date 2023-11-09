@@ -90,6 +90,7 @@ refill_infolder () {
     fi
 }
 
+
 set -o pipefail
 
 while [[ true ]]; do
@@ -122,6 +123,14 @@ while [[ true ]]; do
     docker_wait_image
     touch data/idle
 
+    # get local and remote commits
+    pushd "${dewolf_repo}"
+    git checkout "${dewolf_branch}"
+    git fetch
+    current_commit="$(git rev-parse HEAD)"
+    upstream_commit=$(git rev-parse "${dewolf_branch}"@{upstream})
+    popd
+
     # gather data from samples.sqlite3
     # append data to filtered.sqlite3
     # rotate samples.sqlite3
@@ -138,13 +147,6 @@ while [[ true ]]; do
         echo "[-] samples.sqlite3 does not exist..."
     fi
 
-    # get local and remote commits
-    pushd "${dewolf_repo}"
-    git checkout "${dewolf_branch}"
-    git fetch
-    current_commit="$(git rev-parse HEAD)"
-    upstream_commit=$(git rev-parse "${dewolf_branch}"@{upstream})
-    popd
     
     # update and refill queue if new version
     if [ "${current_commit}" != "${upstream_commit}" ]; then
