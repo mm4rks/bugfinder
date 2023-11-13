@@ -5,8 +5,8 @@ max_size=90000
 image_name="bugfinder-dewolf"
 dewolf_repo="$(pwd)/dewolf/repo"
 dewolf_branch="main"
-max_workers=20
-max_time=3600
+max_workers=8
+max_time=600
 
 
 if [ "${EUID}" -ne 0 ]; then 
@@ -31,13 +31,23 @@ docker_stop_image () {
 }
 
 docker_wait_image () {
+    echo "[+] wait for running containers"
     local container_ids=$(docker ps -q --filter ancestor="${image_name}")
+
     if [[ -z "${container_ids}" ]]; then
         echo "[+] INFO no containers running for image: ${image_name}"
-    else
-        echo "[+] waiting for ${container_ids}"
-        docker wait ${container_ids}
+        return
     fi
+
+    echo "[+] waiting for containers:"
+    for container_id in $container_ids; do
+        if docker ps -q | grep -q "^${container_id}$"; then
+            echo "    - Waiting for container: ${container_id}"
+            docker wait "${container_id}"
+        else
+            echo "    - No such container: ${container_id}"
+        fi
+    done    
 }
 
 finish() {
@@ -78,24 +88,101 @@ run_task () {
 refill_infolder () {
     # save relevant samples (linked on webapp)
     # move samples to infolder for processing
-    echo "[+] refilling infolder and copying relevant samples straight to data/samples"
-    rmdir infolder && mv data/samples infolder
-    mkdir -p data/samples
+    echo "[+] refilling infolder and copying relevant samples cold storage"
     if [ -f "data/filtered.sqlite3" ]; then
         source "$(pwd)/.venv/bin/activate"
         for i in $(python filter.py -i data/filtered.sqlite3 --list); do 
-            cp infolder/$i data/samples
+            cp -n data/samples/$i data/cold_storage 2> /dev/null
         done
         deactivate
     fi
+    rmdir ${infolder} && mv data/samples ${infolder}
+    mkdir -p data/samples
 }
 
+queue_sample_by_hash () {
+    # add a sample by hash to the worker pool
+    local sample_hash=$1
 
-set -o pipefail
+    # Wait for a free worker to process the sample
+    local running_containers=$(sudo docker ps --filter ancestor="${image_name}" -q | wc -l)
+    while [ ${running_containers} -ge ${max_workers} ]; do
+      sleep 1
+      running_containers=$(sudo docker ps --filter ancestor="${image_name}" -q | wc -l)
+    done
+    # Start a new worker/container
+    echo "[+] - $(get_timestamp) - starting worker container"
+    run_task ${sample_hash}
+}
 
-while [[ true ]]; do
+quick_run () {
+    # process crashing samples from last commit
+    # samples must be in infolder and will be moved to data/samples
+    echo "[+] quick run"
+    if [ ! -f "data/filtered.sqlite3" ]; then
+        return
+    fi
+    local last_processed_commit=$(sqlite3 data/filtered.sqlite3 "SELECT dewolf_current_commit FROM summary ORDER BY id DESC LIMIT 1;") 
+    source "$(pwd)/.venv/bin/activate"
+    python filter.py -i data/filtered.sqlite3 --list --commit ${last_processed_commit} > "./data/quick_run"
+    deactivate
+    total_files=$(wc -l "./data/quick_run" | awk '{print $1}')
+    processed_files=0
+    echo "${processed_files}/${total_files}" > data/quick_run.progress
+    while IFS= read -r file; do
+        if [ ! -f "${infolder}/${file}" ]; then
+            # already processed, or missing
+            continue
+        fi
+        mv "${infolder}/${file}" "./data/samples/${file}"
+        queue_sample_by_hash ${file}
+        ((processed_files++))
+        echo "${processed_files}/${total_files}" > data/quick_run.progress
+        echo "quick run containers:" > data/healthcheck.txt
+        docker ps >> data/healthcheck.txt
+    done < "./data/quick_run"
+    docker_wait_image
+    echo "quick run containers:" > data/healthcheck.txt
+    docker ps >> data/healthcheck.txt
+}
+
+long_run () {
+    # process all remaining files in infolder
+    # perform renaming and filtering
+    total_files=$(ls "${infolder}" | wc -l)
+    processed_files=0
+    echo "${processed_files}/${total_files}" > data/long_run.progress
+    for file in $(find ${infolder} -maxdepth 1 -type f ! -name '.gitignore'); do
+        # TODO break if new dewolf version
+        echo "[+] long run - $(get_timestamp) - filename: ${file}"
+        if filter_sample_file $file; then
+            continue # file was filtered
+        fi
+        hash=$(sha256sum $file | awk '{ print $1 }')
+        status=$?
+        if [[ ${status} -ne 0 ]]; then
+            echo "[-] ERROR: hashing failed (${status})"
+            exit 1
+        fi
+        mv "${file}" "./data/samples/${hash}"
+        queue_sample_by_hash ${hash}
+        ((processed_files++))
+        echo "${processed_files}/${total_files}" > data/long_run.progress
+        echo "long run containers:" > data/healthcheck.txt
+        docker ps >> data/healthcheck.txt
+    done
+    docker_wait_image
+    echo "long run containers:" > data/healthcheck.txt
+    docker ps >> data/healthcheck.txt
+}
+
+clear_infolder () {
+    # move files from infolder to data/samples
+    # filter, and name by sha256
+    echo "[+] clearing infolder"
+    mkdir -p ${infolder}
     for f in $(find ${infolder} -maxdepth 1 -type f ! -name '.gitignore'); do
-        echo "[+] - $(get_timestamp) - processing $f"
+        echo "[+] clear - $(get_timestamp) - file: ${f}"
         if filter_sample_file $f; then
             continue # file was filtered
         fi
@@ -105,48 +192,42 @@ while [[ true ]]; do
             echo "[-] ERROR: hashing failed (${status})"
             exit 1
         fi
-        echo "[+] - $(get_timestamp) - sample hash: ${hash}"
         mv "${f}" "./data/samples/${hash}"
-
-        # Wait for a free worker to process the sample
-        running_containers=$(sudo docker ps --filter ancestor="${image_name}" -q | wc -l)
-        while [ ${running_containers} -ge ${max_workers} ]; do
-          sleep 1
-          running_containers=$(sudo docker ps --filter ancestor="${image_name}" -q | wc -l)
-        done
-        # Start a new worker/container
-        echo "[+] - $(get_timestamp) - starting worker container"
-        run_task ${hash}
-        sleep 1
-        docker ps > data/healthcheck.txt
     done
-    docker_wait_image
-    touch data/idle
+}
 
+update_db () {
+    local tag=$1
+    echo "[*] update_db (${tag})"
+    # does samples.sqlite3 exists?
+    if [ ! -f "data/samples.sqlite3" ]; then
+        echo "[*] update_db (${tag}) - no samples.sqlite, nothing to do."
+        return
+    fi
+    pushd "${dewolf_repo}"
+    git checkout "${dewolf_branch}"
+    local current_commit="$(git rev-parse HEAD)"
+    popd
+    # backup filtered.sqlite3
+    if [ -f "data/filtered.sqlite3" ]; then
+        echo "[+] backing up filtered.sqlite3"
+        cp data/filtered.sqlite3 data/filtered.sqlite3.bak
+    fi
+    echo "[+] filtering and rotating samples.sqlite3"
+    source "$(pwd)/.venv/bin/activate"
+    python filter.py -i data/samples.sqlite3 -o data/filtered.sqlite3 --tag ${tag}
+    deactivate
+    mv --backup=numbered data/samples.sqlite3 data/"${tag}_${current_commit}.sqlite3"
+}
+
+init_new_run () {
     # get local and remote commits
     pushd "${dewolf_repo}"
     git checkout "${dewolf_branch}"
     git fetch
-    current_commit="$(git rev-parse HEAD)"
-    upstream_commit=$(git rev-parse "${dewolf_branch}"@{upstream})
+    local current_commit="$(git rev-parse HEAD)"
+    local upstream_commit=$(git rev-parse "${dewolf_branch}"@{upstream})
     popd
-
-    # gather data from samples.sqlite3
-    # append data to filtered.sqlite3
-    # rotate samples.sqlite3
-    if [ -f "data/samples.sqlite3" ]; then
-        if [ -f "data/filtered.sqlite3" ]; then
-            cp data/filtered.sqlite3 data/filtered.sqlite3.bak
-        fi
-        echo "[+] filtering and moving samples.sqlite3"
-        source "$(pwd)/.venv/bin/activate"
-        python filter.py -i data/samples.sqlite3 -o data/filtered.sqlite3
-        deactivate
-        mv --backup=numbered data/samples.sqlite3 data/"${current_commit}.sqlite3"
-    else
-        echo "[-] samples.sqlite3 does not exist..."
-    fi
-
     
     # update and refill queue if new version
     if [ "${current_commit}" != "${upstream_commit}" ]; then
@@ -161,9 +242,22 @@ while [[ true ]]; do
             exit 1
         fi
         refill_infolder
+    else
+        echo "[+] no new dewolf version" 
     fi
+}
 
+set -o pipefail
+
+refill_infolder
+while [[ true ]]; do
+    quick_run
+    update_db "quick"
+    long_run
+    update_db "long"
+    touch data/idle
+    init_new_run
 
     echo "[+] idle sleep"
-    sleep 300
+    sleep 180
 done
