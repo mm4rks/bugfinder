@@ -2,7 +2,7 @@ import logging
 import shutil
 import tempfile
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import pyminizip
 from django.conf import Path, settings
@@ -60,8 +60,8 @@ def dashboard(request):
     context = {
         "health_stats": health_stats,
         "progress_log": progress_log,
-        "heartbeat_delta_seconds": timestamp_to_elapsed_seconds(last_heartbeat),
-        "idle_delta_seconds": timestamp_to_elapsed_seconds(last_idle),
+        "heartbeat_delta": timedelta(seconds=timestamp_to_elapsed_seconds(last_heartbeat)),
+        "idle_delta": timedelta(seconds=timestamp_to_elapsed_seconds(last_idle)),
     }
     return HttpResponse(template.render(context, request))
 
