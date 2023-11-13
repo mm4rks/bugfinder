@@ -1,20 +1,45 @@
 {% extends "base.html" %}
+{% load filters %}
 {% block content %}
     <div class="container">
         <div class="row">
             <div class="col-lg">
                 <h3>Dashboard</h3>
-                <p>
-                    Last heartbeat <b>{{ heartbeat_delta }}</b> ago.
-                </p>
-                <p>
-                    Last idle <b>{{ idle_delta }}</b> ago.
-                </p>
                 <div class="container">
-                    <pre><code>{{ health_stats }}</code></pre>
-                </div>
-                <div class="container">
-                    <pre><code>{{ progress_log }}</code></pre>
+                    <p>
+                        <b>Quickrun</b> processes samples that crashed for the previous commit (TODO).
+                    </p>
+                    <div class="progress mb-5">
+                        <div class="progress-bar"
+                             role="progressbar"
+                             style="width: {{ quickrun_processed|multiply:100|divide:quickrun_total }}%"
+                             aria-valuenow="{{ quickrun_processed|multiply:100|divide:quickrun_total }}"
+                             aria-valuemin="0"
+                             aria-valuemax="100">{{ quickrun_processed }}/{{ quickrun_total }}</div>
+                    </div>
+                    <p>
+                        <b>Longrun</b> processes all remaining samples in queue. Errors encountered here may be novel.
+                    </p>
+                    <div class="progress mb-5">
+                        <div class="progress-bar"
+                             role="progressbar"
+                             style="width: {{ longrun_processed|multiply:100|divide:longrun_total }}%"
+                             aria-valuenow="{{ longrun_processed|multiply:100|divide:longrun_total }}"
+                             aria-valuemin="0"
+                             aria-valuemax="100">{{ longrun_processed }}/{{ longrun_total }}</div>
+                    </div>
+                    <p>
+                        Last heartbeat <b>{{ heartbeat_delta }}</b> ago.
+                    </p>
+                    <p>
+                        Last check for new dewolf version <b>{{ idle_delta }}</b> ago.
+                    </p>
+                    <div class="container">
+                        <pre><code>{{ health_stats }}</code></pre>
+                    </div>
+                    <div class="container">
+                        <pre><code>{{ progress_log }}</code></pre>
+                    </div>
                 </div>
             </div>
         </div>

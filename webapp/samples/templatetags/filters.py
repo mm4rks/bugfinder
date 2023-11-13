@@ -16,3 +16,10 @@ def b64encode(value):
 def get(d, key):
     return d.get(key)  # Safely get the value from the dictionary
 
+@register.filter
+def multiply(value, arg):
+    return value * arg
+
+@register.filter
+def divide(value, arg):
+    return value / arg

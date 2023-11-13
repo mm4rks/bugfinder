@@ -1,12 +1,15 @@
 {% extends "base.html" %}
 {% load filters %}
 {% block content %}
-        <div class="container">
-            <h3>dewolf errors <code><a href="https://github.com/fkie-cad/dewolf/commits/main" class="text-decoration-none">{{ summary.dewolf_current_commit }}</a></code></h3>
-            <p>
-                Errors are grouped by exception type, filename, and line number. Size is measured by the count of basic blocks in the decompiled function. Only errors for the current commit are shown here.
-            </p>
-            {% if dewolf_errors %}
+    <div class="container">
+        <h3>
+            errors for commit: <code><a href="https://github.com/fkie-cad/dewolf/commits/main"
+   class="text-decoration-none">{{ summary.dewolf_current_commit }}</a></code>
+        </h3>
+        <p>
+            <b>Quickrun</b> processes samples that crashed for the previous commit (TODO).
+        </p>
+        {% if quickrun_errors %}
             <table class="table table-hover">
                 <thead>
                     <tr>
@@ -16,10 +19,11 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {% for failed_case in dewolf_errors %}
+                    {% for failed_case in quickrun_errors %}
                         <tr onclick="window.location='{% url 'dewolf_error' failed_case.id %}';">
                             <td>
-                                <a class="pe-3 text-decoration-none" href="{% url 'dewolf_error' failed_case.id %}">
+                                <a class="pe-3 text-decoration-none"
+                                   href="{% url 'dewolf_error' failed_case.id %}">
                                     <code>{{ failed_case.case_group }}</code>
                                 </a>
                                 {% for issue in issues|get:failed_case.case_group %}
@@ -41,8 +45,52 @@
                     {% endfor %}
                 </tbody>
             </table>
-        </div>
-    {% else %}
-    <p>No errors for <code>{{ summary.dewolf_current_commit }}</code>.</p>
-    {% endif %}
+        {% else %}
+            <p>No errors</p>
+        {% endif %}
+    </div>
+    <div class="container">
+        <p>
+            <b>Longrun</b> processes all remaining samples in queue. Errors encountered here may be novel.
+        </p>
+        {% if longrun_errors %}
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th scope="col" class="w-75">Case Group</th>
+                        <th scope="col">Size</th>
+                        <th scope="col">Count</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for failed_case in longrun_errors %}
+                        <tr onclick="window.location='{% url 'dewolf_error' failed_case.id %}';">
+                            <td>
+                                <a class="pe-3 text-decoration-none"
+                                   href="{% url 'dewolf_error' failed_case.id %}">
+                                    <code>{{ failed_case.case_group }}</code>
+                                </a>
+                                {% for issue in issues|get:failed_case.case_group %}
+                                    {% if issue.status == "open" %}
+                                        <a class="badge bg-success text-decoration-none"
+                                           href="{{ issue.html_url }}">Open #{{ issue.number }}</a>
+                                    {% elif issue.status == "in progress" %}
+                                        <a class="badge bg-warning text-decoration-none"
+                                           href="{{ issue.html_url }}">In Progress #{{ issue.number }}</a>
+                                    {% elif issue.status == "closed" %}
+                                        <a class="badge bg-danger text-decoration-none"
+                                           href="{{ issue.html_url }}">Closed #{{ issue.number }}</a>
+                                    {% endif %}
+                                {% endfor %}
+                            </td>
+                            <td>{{ failed_case.function_basic_block_count }}</td>
+                            <td>{{ failed_case.errors_per_group_count_pre_filter }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p>No errors</p>
+        {% endif %}
+    </div>
 {% endblock content %}

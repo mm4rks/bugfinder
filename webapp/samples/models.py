@@ -16,6 +16,7 @@ class Summary(models.Model):
     unique_exceptions = models.IntegerField(blank=True, null=True)  # This field type is a guess.
     unique_tracebacks = models.IntegerField(blank=True, null=True)  # This field type is a guess.
     processed_samples = models.IntegerField(blank=True, null=True)  # This field type is a guess.
+    tag = models.TextField(blank=True, null=True)  # This field type is a guess.
 
     class Meta:
         managed = False
@@ -45,6 +46,7 @@ class DewolfError(models.Model):
     error_line = models.TextField(blank=True, null=True)  # This field type is a guess.
     case_group = models.TextField(blank=True, null=True)  # This field type is a guess.
     errors_per_group_count_pre_filter = models.IntegerField(blank=True, null=True)  # This field type is a guess.
+    tag = models.TextField(blank=True, null=True)  # This field type is a guess.
 
     class Meta:
         managed = False

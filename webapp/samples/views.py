@@ -27,14 +27,23 @@ def index(request):
     # query summary for current dewolf commit
     summary = Summary.objects.using("samples").order_by("-id").first()
 
-    # select the smallest representative from a case group
-    errors_current_commit = DewolfError.objects.using("samples").filter(dewolf_current_commit=summary.dewolf_current_commit)
-    # annotate each error wit row number, partition by 'case_group', and ordered by #basicblocks
-    rows_minimized_per_group = errors_current_commit.annotate(
-        row_number=Window(expression=RowNumber(), partition_by=[F("case_group")], order_by=F("function_basic_block_count").asc())
-    )
-    # select representative with least basic blocks, then order by error count descending
-    min_dewolf_exceptions = rows_minimized_per_group.filter(row_number=1).order_by("-errors_per_group_count_pre_filter")
+    def _smallest_sample_per_case_group_and_tag(commit: str, tag: str):
+        """
+        Return query set containing the smallest representative of each case group,
+        given commit and run-type.
+        """
+        # select the smallest representative from a case group
+        errors_current_commit = DewolfError.objects.using("samples").filter(dewolf_current_commit=commit, tag=tag)
+        # annotate each error wit row number, partition by 'case_group', and ordered by #basicblocks
+        rows_minimized_per_group = errors_current_commit.annotate(
+            row_number=Window(expression=RowNumber(), partition_by=[F("case_group")], order_by=F("function_basic_block_count").asc())
+        )
+        # select representative with least basic blocks, then order by error count descending
+        return rows_minimized_per_group.filter(row_number=1).order_by("-errors_per_group_count_pre_filter")
+
+
+    quickrun_errors = _smallest_sample_per_case_group_and_tag(summary.dewolf_current_commit, "quick")
+    longrun_errors = _smallest_sample_per_case_group_and_tag(summary.dewolf_current_commit, "long")
 
     # retrieve all GitHub issues, group them in a default dict by 'case_group'
     github_issues_by_case_group = defaultdict(list)
@@ -42,7 +51,12 @@ def index(request):
         github_issues_by_case_group[issue.case_group].append(issue)
 
     template = loader.get_template("index.html")
-    context = {"dewolf_errors": min_dewolf_exceptions, "summary": summary, "issues": github_issues_by_case_group}
+    context = {
+        "quickrun_errors": quickrun_errors,
+        "longrun_errors": longrun_errors,
+        "summary": summary,
+        "issues": github_issues_by_case_group,
+    }
     return HttpResponse(template.render(context, request))
 
 
@@ -53,6 +67,10 @@ def timestamp_to_elapsed_seconds(timestamp) -> int:
 
 @login_required
 def dashboard(request):
+
+    def _get_progress(file_path):
+        return 500, 1000
+
     last_heartbeat, health_stats = get_file_last_modified_and_content(Path(settings.BASE_DIR) / "data/healthcheck.txt")
     last_idle, _ = get_file_last_modified_and_content(Path(settings.BASE_DIR) / "data/idle")
     progress_log = get_last_line(Path(settings.BASE_DIR) / "data/progress.log")
@@ -63,6 +81,8 @@ def dashboard(request):
         "heartbeat_delta": timedelta(seconds=timestamp_to_elapsed_seconds(last_heartbeat)),
         "idle_delta": timedelta(seconds=timestamp_to_elapsed_seconds(last_idle)),
     }
+    context["quickrun_processed"], context["quickrun_total"] = _get_progress("TODO")
+    context["longrun_processed"], context["longrun_total"] = _get_progress("TODO")
     return HttpResponse(template.render(context, request))
 
 
