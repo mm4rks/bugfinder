@@ -1,15 +1,14 @@
 import logging
 import shutil
 import tempfile
-from datetime import datetime
 from collections import defaultdict
+from datetime import datetime
 
 import pyminizip
 from django.conf import Path, settings
 from django.contrib.auth.decorators import login_required
-from django.db.models import (F, CharField, IntegerField, OuterRef, Q,
-                              Subquery, TextField, Value, Window)
-from django.db.models.functions import Coalesce, RowNumber
+from django.db.models import F, Q, Window
+from django.db.models.functions import RowNumber
 from django.http import FileResponse, Http404, HttpResponse, JsonResponse
 from django.shortcuts import redirect
 from django.template import loader
@@ -26,20 +25,14 @@ def index(request):
     Index view, list smallest cases per case group
     """
     # query summary for current dewolf commit
-    summary = Summary.objects.using("samples").all().first()
+    summary = Summary.objects.using("samples").order_by("-id").first()
 
     # select the smallest representative from a case group
-    errors_current_commit = (
-        DewolfError.objects.using("samples").filter(dewolf_current_commit=summary.dewolf_current_commit)
-    )
+    errors_current_commit = DewolfError.objects.using("samples").filter(dewolf_current_commit=summary.dewolf_current_commit)
     # annotate each error wit row number, partition by 'case_group', and ordered by #basicblocks
     rows_minimized_per_group = errors_current_commit.annotate(
-            row_number=Window(
-                expression=RowNumber(),
-                partition_by=[F("case_group")],
-                order_by=F("function_basic_block_count").asc()
-                )
-            )
+        row_number=Window(expression=RowNumber(), partition_by=[F("case_group")], order_by=F("function_basic_block_count").asc())
+    )
     # select representative with least basic blocks, then order by error count descending
     min_dewolf_exceptions = rows_minimized_per_group.filter(row_number=1).order_by("-errors_per_group_count_pre_filter")
 
@@ -94,7 +87,7 @@ def dewolf_error(request, row_id):
         .filter(case_group=dewolf_error.case_group)
         .exclude(id=row_id)
         .order_by("function_basic_block_count")
-        )[:10]
+    )[:10]
     try:
         issues = GitHubIssue.objects.using("samples").filter(case_group=dewolf_error.case_group).all()
     except GitHubIssue.DoesNotExist:
@@ -107,7 +100,7 @@ def dewolf_error(request, row_id):
 
 @login_required
 def samples(request):
-    summary = Summary.objects.using("samples").all().first()
+    summary = Summary.objects.using("samples").order_by("-id").all()
     context = {"summary": summary, "avg_duration": "not implemented"}
     template = loader.get_template("samples.html")
     return HttpResponse(template.render(context, request))

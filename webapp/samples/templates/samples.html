@@ -6,42 +6,32 @@
                 <h3>Stats</h3>
                 <table class="table">
                     <thead>
+                        <tr>
+                            <th scope="col">run type</th>
+                            <th scope="col">commit</th>
+                            <th scope="col" class="text-end">processed samples</th>
+                            <th scope="col" class="text-end">functions decompiled</th>
+                            <th scope="col" class="text-end">errors</th>
+                            <th scope="col" class="text-end">unique exceptions</th>
+                            <th scope="col" class="text-end">unique tracebacks</th>
+                            <th scope="col" class="text-end">&#8960; decompilation time</th>
+                        </tr>
                     </thead>
                     <tbody>
-                        <tr>
-                            <th scope="row">commit</th>
-                            <td>
-                                <code>{{ summary.dewolf_current_commit|truncatechars:8 }}</code>
-                            </td>
-                        </tr>
-                        <tr>
-                            <th scope="row">processed samples</th>
-                            <td>{{ summary.processed_samples }}</td>
-                        </tr>
-                        <tr>
-                            <th scope="row">functions decompiled</th>
-                            <td>{{ summary.total_functions }}</td>
-                        </tr>
-                        <tr>
-                            <th scope="row">errors</th>
-                            <td>{{ summary.total_errors }}</td>
-                        </tr>
-                        <tr>
-                            <th scope="row">unique exceptions</th>
-                            <td>{{ summary.unique_exceptions }}</td>
-                        </tr>
-                        <tr>
-                            <th scope="row">unique tracebacks</th>
-                            <td>{{ summary.unique_tracebacks }}</td>
-                        </tr>
-                        <tr>
-                            <th scope="row">&#8960; decompilation time</th>
-                            <td>{{ summary.avg_dewolf_decompilation_time|floatformat:2 }}s</td>
-                        </tr>
-                        <tr>
-                            <th scope="row">&#8960; time  per sample</th>
-                            <td>{{ avg_duration|floatformat:2 }}s</td>
-                        </tr>
+                        {% for item in summary %}
+                            <tr>
+                                <td>{{ item.tag }}</td>
+                                <td>
+                                    <code>{{ item.dewolf_current_commit|truncatechars:8 }}</code>
+                                </td>
+                                <td class="text-end">{{ item.processed_samples }}</td>
+                                <td class="text-end">{{ item.total_functions }}</td>
+                                <td class="text-end">{{ item.total_errors }}</td>
+                                <td class="text-end">{{ item.unique_exceptions }}</td>
+                                <td class="text-end">{{ item.unique_tracebacks }}</td>
+                                <td class="text-end">{{ item.avg_dewolf_decompilation_time|floatformat:2 }}s</td>
+                            </tr>
+                        {% endfor %}
                     </tbody>
                 </table>
             </div>
