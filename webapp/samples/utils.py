@@ -2,7 +2,7 @@ import hashlib
 import os
 import zipfile
 from pathlib import Path
-from typing import Union
+from typing import Tuple, Union
 
 
 def unzip_flat(zip_file_path, target_dir, pwd=None):
@@ -22,6 +22,13 @@ def get_file_last_modified_and_content(path: Path):
     if not path.exists():
         return 0, f"'{path}' does not exist"
     return path.stat().st_mtime, path.read_text()
+
+def get_progress(path: Path) -> Tuple[int, int]:
+    """Parse file contents of the form 'processed/total'."""
+    if not path.exists():
+        return 0, -1
+    a, b = path.read_text().split("/")
+    return int(a), int(b)
 
 
 def get_last_line(path: Path):

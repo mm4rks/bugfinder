@@ -7,7 +7,7 @@
                 <h3>Dashboard</h3>
                 <div class="container">
                     <p>
-                        <b>Quickrun</b> processes samples that crashed for the previous commit (TODO).
+                        <b>Quickrun:</b> samples that crashed for the previous commit.
                     </p>
                     <div class="progress mb-5">
                         <div class="progress-bar"
@@ -18,7 +18,7 @@
                              aria-valuemax="100">{{ quickrun_processed }}/{{ quickrun_total }}</div>
                     </div>
                     <p>
-                        <b>Longrun</b> processes all remaining samples in queue. Errors encountered here may be novel.
+                        <b>Longrun:</b> all remaining samples in queue. Errors encountered here may be novel.
                     </p>
                     <div class="progress mb-5">
                         <div class="progress-bar"
@@ -29,10 +29,10 @@
                              aria-valuemax="100">{{ longrun_processed }}/{{ longrun_total }}</div>
                     </div>
                     <p>
-                        Last heartbeat <b>{{ heartbeat_delta }}</b> ago.
+                        Last processed sample: <b>{{ heartbeat_delta }}</b> ago.
                     </p>
                     <p>
-                        Last check for new dewolf version <b>{{ idle_delta }}</b> ago.
+                        Last check for new dewolf version: <b>{{ idle_delta }}</b> ago.
                     </p>
                     <div class="container">
                         <pre><code>{{ health_stats }}</code></pre>

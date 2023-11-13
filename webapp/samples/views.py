@@ -15,7 +15,7 @@ from django.template import loader
 
 from .github import Github
 from .models import DewolfError, GitHubIssue, Summary
-from .utils import (get_file_last_modified_and_content, get_last_line, is_hex,
+from .utils import (get_file_last_modified_and_content, get_last_line, get_progress, is_hex,
                     sha256sum, unzip_flat)
 
 
@@ -26,6 +26,17 @@ def index(request):
     """
     # query summary for current dewolf commit
     summary = Summary.objects.using("samples").order_by("-id").first()
+
+    if summary is None:
+        context = {
+            "quickrun_errors": [],
+            "longrun_errors": [],
+            "summary": None,
+            "issues": defaultdict(list),
+            "message": "No summary data available.",
+        }
+        template = loader.get_template("index.html")
+        return HttpResponse(template.render(context, request))
 
     def _smallest_sample_per_case_group_and_tag(commit: str, tag: str):
         """
@@ -40,7 +51,6 @@ def index(request):
         )
         # select representative with least basic blocks, then order by error count descending
         return rows_minimized_per_group.filter(row_number=1).order_by("-errors_per_group_count_pre_filter")
-
 
     quickrun_errors = _smallest_sample_per_case_group_and_tag(summary.dewolf_current_commit, "quick")
     longrun_errors = _smallest_sample_per_case_group_and_tag(summary.dewolf_current_commit, "long")
@@ -68,9 +78,6 @@ def timestamp_to_elapsed_seconds(timestamp) -> int:
 @login_required
 def dashboard(request):
 
-    def _get_progress(file_path):
-        return 500, 1000
-
     last_heartbeat, health_stats = get_file_last_modified_and_content(Path(settings.BASE_DIR) / "data/healthcheck.txt")
     last_idle, _ = get_file_last_modified_and_content(Path(settings.BASE_DIR) / "data/idle")
     progress_log = get_last_line(Path(settings.BASE_DIR) / "data/progress.log")
@@ -81,8 +88,8 @@ def dashboard(request):
         "heartbeat_delta": timedelta(seconds=timestamp_to_elapsed_seconds(last_heartbeat)),
         "idle_delta": timedelta(seconds=timestamp_to_elapsed_seconds(last_idle)),
     }
-    context["quickrun_processed"], context["quickrun_total"] = _get_progress("TODO")
-    context["longrun_processed"], context["longrun_total"] = _get_progress("TODO")
+    context["quickrun_processed"], context["quickrun_total"] = get_progress(Path(settings.BASE_DIR) / "data/quick_run.progress")
+    context["longrun_processed"], context["longrun_total"] = get_progress(Path(settings.BASE_DIR) / "data/long_run.progress")
     return HttpResponse(template.render(context, request))
 
 

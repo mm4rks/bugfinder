@@ -6,8 +6,8 @@
             errors for commit: <code><a href="https://github.com/fkie-cad/dewolf/commits/main"
    class="text-decoration-none">{{ summary.dewolf_current_commit }}</a></code>
         </h3>
-        <p>
-            <b>Quickrun</b> processes samples that crashed for the previous commit (TODO).
+        <p class="mt-5">
+            Errors seen in previous commit:
         </p>
         {% if quickrun_errors %}
             <table class="table table-hover">
@@ -50,8 +50,8 @@
         {% endif %}
     </div>
     <div class="container">
-        <p>
-            <b>Longrun</b> processes all remaining samples in queue. Errors encountered here may be novel.
+        <p class="mt-5">
+            Possibly novel errors:
         </p>
         {% if longrun_errors %}
             <table class="table table-hover">
