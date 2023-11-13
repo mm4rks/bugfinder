@@ -263,3 +263,10 @@ def upload(request):
                 status, response_data = handle_file(temp_file.name)
             return JsonResponse(response_data, status=status)
     return JsonResponse({"error": "Invalid request"}, status=400)
+
+
+@login_required
+def upload_view(request):
+    context = {}
+    template = loader.get_template("upload.html")
+    return HttpResponse(template.render(context, request))
