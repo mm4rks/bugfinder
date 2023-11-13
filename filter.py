@@ -4,7 +4,7 @@ import logging
 import sqlite3
 import sys
 from pathlib import Path
-from typing import Dict, Iterator, Union
+from typing import Optional, Union
 
 from pandas import DataFrame, read_sql_query, to_datetime, unique
 
@@ -47,23 +47,53 @@ class DBFilter:
         error_file_path TEXT,
         error_line TEXT,
         case_group TEXT,
-        errors_per_group_count_pre_filter INTEGER
+        errors_per_group_count_pre_filter INTEGER,
+        tag TEXT
         )
     """
 
-    # TODO create indices on filtered.sqlite3
-    INDEX_CREATION = """
-       CREATE INDEX idx_dewolf_errors_is_successful ON dewolf_errors(is_successful);
-       CREATE INDEX idx_dewolf_errors_dewolf_current_commit ON dewolf_errors(dewolf_current_commit);
-       CREATE INDEX idx_dewolf_errors_case_group ON dewolf_errors(case_group);
-       CREATE INDEX idx_dewolf_function_basic_block_count ON dewolf_errors(function_basic_block_count);
+    SUMMARY_SCHEMA = """ CREATE TABLE IF NOT EXISTS summary (
+        id INTEGER NOT NULL PRIMARY KEY,
+        dewolf_current_commit TEXT,
+        avg_dewolf_decompilation_time REAL,
+        total_functions INTEGER,
+        total_errors INTEGER,
+        unique_exceptions INTEGER,
+        unique_tracebacks INTEGER,
+        processed_samples INTEGER,
+        tag TEXT
+)
+
     """
 
-    def __init__(self, df: DataFrame):
+    INDEX_CREATION = """
+       CREATE INDEX IF NOT EXISTS idx_dewolf_errors_is_successful ON dewolf_errors(is_successful);
+       CREATE INDEX IF NOT EXISTS idx_dewolf_errors_dewolf_current_commit ON dewolf_errors(dewolf_current_commit);
+       CREATE INDEX IF NOT EXISTS idx_dewolf_errors_case_group ON dewolf_errors(case_group);
+       CREATE INDEX IF NOT EXISTS idx_dewolf_function_basic_block_count ON dewolf_errors(function_basic_block_count);
+       CREATE INDEX IF NOT EXISTS idx_dewolf_errors_tag ON dewolf_errors(tag);
+    """
+
+    def __init__(self, df: DataFrame, tag: Optional[str] = None):
         self._summary = None
         self._filtered = None
         self._samples = None
         self._df = df
+        self._tag = tag
+
+    @property
+    def is_empty(self):
+        """The is_empty property."""
+        return len(self._df) == 0
+
+    @property
+    def tag(self):
+        """The tag property."""
+        return self._tag
+
+    @tag.setter
+    def tag(self, value):
+        self._tag = value
 
     @classmethod
     def from_file(cls, file_path):
@@ -71,6 +101,17 @@ class DBFilter:
             df = read_sql_query(cls.QUERY, con)
             df["timestamp"] = to_datetime(df["timestamp"], format="mixed")
         return cls(df)
+
+    @classmethod
+    def create_index_if_not_exists(cls, file_path):
+        with sqlite3.connect(file_path) as conn:
+            cursor = conn.cursor()
+            for index_query in cls.INDEX_CREATION.splitlines():
+                cursor.execute(index_query)
+            cursor.execute(f"PRAGMA index_list('dewolf_errors')")
+            indexes = cursor.fetchall()
+            for index in indexes:
+                print(f"Table 'dewolf_errors': Index '{index[1]}'")
 
     @staticmethod
     def _write_df_to_sqlite3(df: DataFrame, database_path: Union[str, Path], table_name: str, append: bool = False):
@@ -111,6 +152,7 @@ class DBFilter:
             "unique_exceptions": len(failed_runs.dewolf_exception.unique()),
             "unique_tracebacks": len(failed_runs.dewolf_traceback.unique()),
             "processed_samples": len(self._df.sample_hash.unique()),
+            "tag": self.tag,
         }
         return DataFrame(summary, index=[0])
 
@@ -162,6 +204,7 @@ class DBFilter:
         # filter n smallest unique per exception and traceback
         f = lambda x: x.nsmallest(10, "function_basic_block_count")
         filtered_df = failed_runs.groupby(["dewolf_exception", "dewolf_traceback"]).apply(f)
+        filtered_df["tag"] = self._tag
         assert isinstance(filtered_df, DataFrame)
         return filtered_df.reset_index(drop=True)
 
@@ -214,21 +257,25 @@ class DBFilter:
             cursor.execute(self.ERROR_SCHEMA)
             con.commit()
 
-        self._write_df_to_sqlite3(self.summary, file_path, table_name="summary", append=False)
+        self._write_df_to_sqlite3(self.summary, file_path, table_name="summary", append=True)
         self._write_df_to_sqlite3(self.filtered, file_path, table_name="dewolf_errors", append=True)
 
 
-def print_sample_hashes(db_file: Path):
-    """Print all sample hashes contained in dewolf_errors table"""
-    sample_hashes = set()
-    stmt = "SELECT DISTINCT sample_hash FROM dewolf_errors;"
+def print_sample_hashes(db_file: Path, commit: str = ""):
+    """Print all sample hashes contained in dewolf_errors table,
+    filter by commit if specified with a pattern that starts with the given commit hash"""
+    stmt = "SELECT DISTINCT sample_hash FROM dewolf_errors"
+    params = ()
+    if commit:
+        commit = commit[:8]
+        stmt += " WHERE dewolf_current_commit LIKE ?"
+        params = (commit + "%",)
     with sqlite3.connect(db_file) as con:
         cursor = con.cursor()
-        cursor.execute(stmt)
-        sample_hashes.update(h[0] for h in cursor.fetchall())
+        cursor.execute(stmt, params)
+        for sample_hash in cursor:
+            print(sample_hash[0])
         cursor.close()
-    for s in sample_hashes:
-        print(s)
 
 
 def print_slow_sample_hashes(db_file: Path, duration: int):
@@ -261,6 +308,9 @@ def parse_arguments() -> argparse.Namespace:
     )
     parser.add_argument("-l", "--list", action="store_true", help="List sample hashes contained in SQLite DB")
     parser.add_argument("-s", "--slow", type=int, help="List samples with functions that take more than X seconds.")
+    parser.add_argument("--commit", type=str, help="Filter by commit hash when listing sample hashes", required=False)
+    parser.add_argument("--tag", type=str, help="Add a tag to filtered rows.", required=False)
+    parser.add_argument("--create-index", action="store_true", help="Create index if it does not exist")
     return parser.parse_args()
 
 
@@ -269,10 +319,17 @@ def main(args: argparse.Namespace) -> int:
         print_slow_sample_hashes(args.input, args.slow)
         return 0
     if args.list:
-        print_sample_hashes(args.input)
+        print_sample_hashes(args.input, commit=args.commit)
+        return 0
+    if args.create_index:
+        DBFilter.create_index_if_not_exists(args.input)
         return 0
     logging.info("filtering database")
     f = DBFilter.from_file(args.input)
+    f.tag = args.tag
+    if f.is_empty:
+        logging.warning("empty df. is samples.sqlite3 empty?")
+        return 0
     f.write(args.output)
     return 0
 

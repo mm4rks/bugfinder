@@ -39,12 +39,7 @@ The worker script is started by the `bugfinder_worker` service.
 The web interface displays content from `filtered.sqlite3`. To increase performance, make sure this SQLite file has the correct indexes by:
 
 ```bash
-sqlite3 data/filtered.sqlite3
-sqlite> 
-       CREATE INDEX idx_dewolf_errors_is_successful ON dewolf_errors(is_successful);
-       CREATE INDEX idx_dewolf_errors_dewolf_current_commit ON dewolf_errors(dewolf_current_commit);
-       CREATE INDEX idx_dewolf_errors_case_group ON dewolf_errors(case_group);
-       CREATE INDEX idx_dewolf_function_basic_block_count ON dewolf_errors(function_basic_block_count);
+python filter.py -i data/filtered.sqlite3 --create-index
 ```
 
 ### Data Filtering
