@@ -39,7 +39,7 @@ The worker script is started by the `bugfinder_worker` service.
 The web interface displays content from `filtered.sqlite3`. To increase performance, make sure this SQLite file has the correct indexes by:
 
 ```bash
-python filter.py -i data/filtered.sqlite3 --create-index
+python filter.py -i data/filtered.sqlite3 --init
 ```
 
 ### Data Filtering

@@ -52,7 +52,7 @@ class DBFilter:
         )
     """
 
-    SUMMARY_SCHEMA = """ CREATE TABLE IF NOT EXISTS summary (
+    SUMMARY_SCHEMA = """CREATE TABLE IF NOT EXISTS summary (
         id INTEGER NOT NULL PRIMARY KEY,
         dewolf_current_commit TEXT,
         avg_dewolf_decompilation_time REAL,
@@ -103,15 +103,24 @@ class DBFilter:
         return cls(df)
 
     @classmethod
-    def create_index_if_not_exists(cls, file_path):
+    def init_db(cls, file_path):
         with sqlite3.connect(file_path) as conn:
+            print("Creating tables...")
             cursor = conn.cursor()
+            cursor.execute(cls.ISSUE_SCHEMA)
+            conn.commit()
+            cursor.execute(cls.ERROR_SCHEMA)
+            conn.commit()
+            cursor.execute(cls.SUMMARY_SCHEMA)
+            conn.commit()
             for index_query in cls.INDEX_CREATION.splitlines():
                 cursor.execute(index_query)
+                conn.commit()
             cursor.execute(f"PRAGMA index_list('dewolf_errors')")
             indexes = cursor.fetchall()
+            print("Indexes created for:")
             for index in indexes:
-                print(f"Table 'dewolf_errors': Index '{index[1]}'")
+                print(f"\tTable 'dewolf_errors': Index '{index[1]}'")
 
     @staticmethod
     def _write_df_to_sqlite3(df: DataFrame, database_path: Union[str, Path], table_name: str, append: bool = False):
@@ -249,12 +258,14 @@ class DBFilter:
         return self._filtered
 
     def write(self, file_path: Path):
-        # create issue table, and dewolf_error table
+        # create tables
         with sqlite3.connect(file_path) as con:
             cursor = con.cursor()
             cursor.execute(self.ISSUE_SCHEMA)
             con.commit()
             cursor.execute(self.ERROR_SCHEMA)
+            con.commit()
+            cursor.execute(self.SUMMARY_SCHEMA)
             con.commit()
 
         self._write_df_to_sqlite3(self.summary, file_path, table_name="summary", append=True)
@@ -310,7 +321,7 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument("-s", "--slow", type=int, help="List samples with functions that take more than X seconds.")
     parser.add_argument("--commit", type=str, help="Filter by commit hash when listing sample hashes", required=False)
     parser.add_argument("--tag", type=str, help="Add a tag to filtered rows.", required=False)
-    parser.add_argument("--create-index", action="store_true", help="Create index if it does not exist")
+    parser.add_argument("--init", action="store_true", help="Create tables and index if it does not exist")
     return parser.parse_args()
 
 
@@ -321,8 +332,8 @@ def main(args: argparse.Namespace) -> int:
     if args.list:
         print_sample_hashes(args.input, commit=args.commit)
         return 0
-    if args.create_index:
-        DBFilter.create_index_if_not_exists(args.input)
+    if args.init:
+        DBFilter.init_db(args.input)
         return 0
     logging.info("filtering database")
     f = DBFilter.from_file(args.input)
