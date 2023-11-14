@@ -8,6 +8,10 @@ dewolf_branch="main"
 max_workers=8
 max_time=600
 
+# globals for rate limiting GitHub queries
+last_commit_check=0
+rate_limit_duration=600
+
 
 if [ "${EUID}" -ne 0 ]; then 
   echo "Please run as root (for running docker commands)"
@@ -21,21 +25,21 @@ get_timestamp () {
 
 docker_stop_image () {
     # stop all containers for $image_name
-    echo "[+] INFO stop containers for ${image_name}..."
+    echo "[+] stopping containers for ${image_name}..."
     local container_ids=$(docker ps -q --filter ancestor="${image_name}")
     if [[ -z "${container_ids}" ]]; then
-        echo "[+] INFO no containers running for image: ${image_name}"
+        echo "[+] no containers running for image: ${image_name}"
     else
         docker stop ${container_ids}
     fi
 }
 
 docker_wait_image () {
-    echo "[+] wait for running containers"
+    echo "[+] wait for running containers..."
     local container_ids=$(docker ps -q --filter ancestor="${image_name}")
 
     if [[ -z "${container_ids}" ]]; then
-        echo "[+] INFO no containers running for image: ${image_name}"
+        echo "[+] no containers running for image: ${image_name}"
         return
     fi
 
@@ -88,7 +92,7 @@ run_task () {
 refill_infolder () {
     # save relevant samples (linked on webapp)
     # move samples to infolder for processing
-    echo "[+] refilling infolder and copying relevant samples cold storage"
+    echo "[+] refilling infolder and copying relevant samples cold storage..."
     if [ -f "data/filtered.sqlite3" ]; then
         source "$(pwd)/.venv/bin/activate"
         for i in $(python filter.py -i data/filtered.sqlite3 --list); do 
@@ -111,14 +115,14 @@ queue_sample_by_hash () {
       running_containers=$(sudo docker ps --filter ancestor="${image_name}" -q | wc -l)
     done
     # Start a new worker/container
-    echo "[+] - $(get_timestamp) - starting worker container"
+    echo "[+] $(get_timestamp) - starting worker container"
     run_task ${sample_hash}
 }
 
 quick_run () {
     # process crashing samples from last commit
     # samples must be in infolder and will be moved to data/samples
-    echo "[+] quick run"
+    echo "[+] starting quick run..."
     if [ ! -f "data/filtered.sqlite3" ]; then
         return
     fi
@@ -128,6 +132,7 @@ quick_run () {
     deactivate
     total_files=$(wc -l "./data/quick_run" | awk '{print $1}')
     processed_files=0
+    echo "[+] samples to process in quick run: ${total_files} (infolder: $(ls ${infolder} | wc -l))"
     echo "${processed_files}/${total_files}" > data/quick_run.progress
     while IFS= read -r file; do
         if [ ! -f "${infolder}/${file}" ]; then
@@ -146,14 +151,68 @@ quick_run () {
     docker ps >> data/healthcheck.txt
 }
 
+clear_infolder () {
+    # move files from infolder to data/samples
+    # filter, and name by sha256
+    echo "[+] clearing infolder..."
+    mkdir -p ${infolder}
+    for f in $(find ${infolder} -maxdepth 1 -type f ! -name '.gitignore'); do
+        echo "[+] clear - $(get_timestamp) - file: ${f}"
+        if filter_sample_file $f; then
+            continue # file was filtered
+        fi
+        hash=$(sha256sum $f | awk '{ print $1 }')
+        status=$?
+        if [[ ${status} -ne 0 ]]; then
+            echo "[-] ERROR: hashing failed (${status})"
+            exit 1
+        fi
+        mv "${f}" "./data/samples/${hash}"
+    done
+}
+
+check_new_commit() {
+    echo "[+] checking new commit..."
+    local current_time=$(date +%s)
+    local time_diff=$((current_time - last_commit_check))
+
+    if [ ${time_diff} -lt ${rate_limit_duration} ]; then
+        echo "[+] Skipping commit check due to rate limiting"
+        return 0
+    fi
+
+    last_commit_check=${current_time}
+
+    pushd "${dewolf_repo}"
+    git checkout "${dewolf_branch}"
+    git fetch
+    local current_commit="$(git rev-parse HEAD)"
+    local upstream_commit=$(git rev-parse "${dewolf_branch}"@{upstream})
+    popd
+
+    if [ "${current_commit}" != "${upstream_commit}" ]; then
+        echo "[+] New commit found in upstream"
+        return 1  # Return a non-zero status to indicate a new commit
+    else
+        echo "[+] No new commit in upstream"
+        return 0
+    fi
+}
+
 long_run () {
     # process all remaining files in infolder
     # perform renaming and filtering
+    echo "[+] starting long run..."
     total_files=$(ls "${infolder}" | wc -l)
     processed_files=0
+    echo "[+] samples to process in long run: ${total_files}"
     echo "${processed_files}/${total_files}" > data/long_run.progress
     for file in $(find ${infolder} -maxdepth 1 -type f ! -name '.gitignore'); do
-        # TODO break if new dewolf version
+        check_new_commit
+        if [ $? -eq 1 ]; then
+            echo "[+] Breaking long run due to new commit in upstream"
+            break
+        fi
         echo "[+] long run - $(get_timestamp) - filename: ${file}"
         if filter_sample_file $file; then
             continue # file was filtered
@@ -174,36 +233,18 @@ long_run () {
     docker_wait_image
     echo "long run containers:" > data/healthcheck.txt
     docker ps >> data/healthcheck.txt
-}
-
-clear_infolder () {
-    # move files from infolder to data/samples
-    # filter, and name by sha256
-    echo "[+] clearing infolder"
-    mkdir -p ${infolder}
-    for f in $(find ${infolder} -maxdepth 1 -type f ! -name '.gitignore'); do
-        echo "[+] clear - $(get_timestamp) - file: ${f}"
-        if filter_sample_file $f; then
-            continue # file was filtered
-        fi
-        hash=$(sha256sum $f | awk '{ print $1 }')
-        status=$?
-        if [[ ${status} -ne 0 ]]; then
-            echo "[-] ERROR: hashing failed (${status})"
-            exit 1
-        fi
-        mv "${f}" "./data/samples/${hash}"
-    done
+    clear_infolder
 }
 
 update_db () {
     local tag=$1
-    echo "[*] update_db (${tag})"
+    echo "[*] updating filtered.sqlite3 (${tag})..."
     # does samples.sqlite3 exists?
     if [ ! -f "data/samples.sqlite3" ]; then
         echo "[*] update_db (${tag}) - no samples.sqlite, nothing to do."
         return
     fi
+    echo "[*] getting current commit..."
     pushd "${dewolf_repo}"
     git checkout "${dewolf_branch}"
     local current_commit="$(git rev-parse HEAD)"
@@ -222,6 +263,7 @@ update_db () {
 
 init_new_run () {
     # get local and remote commits
+    echo "[+] checking upstream commit..."
     pushd "${dewolf_repo}"
     git checkout "${dewolf_branch}"
     git fetch
@@ -249,15 +291,14 @@ init_new_run () {
 
 set -o pipefail
 
-refill_infolder
 while [[ true ]]; do
     quick_run
     update_db "quick"
     long_run
     update_db "long"
-    touch data/idle
     init_new_run
 
-    echo "[+] idle sleep"
-    sleep 180
+    touch data/idle
+    echo "[+] sleeping for ${rate_limit_duration}..."
+    sleep ${rate_limit_duration}
 done
