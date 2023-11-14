@@ -3,6 +3,7 @@ import shutil
 import tempfile
 from collections import defaultdict
 from datetime import datetime, timedelta
+from typing import Optional
 
 import pyminizip
 from django.conf import Path, settings
@@ -38,7 +39,7 @@ def index(request):
         template = loader.get_template("index.html")
         return HttpResponse(template.render(context, request))
 
-    def _smallest_sample_per_case_group_and_tag(commit: str, tag: str):
+    def _smallest_sample_per_case_group_and_tag(commit: str, tag: Optional[str]):
         """
         Return query set containing the smallest representative of each case group,
         given commit and run-type.
@@ -54,6 +55,7 @@ def index(request):
 
     quickrun_errors = _smallest_sample_per_case_group_and_tag(summary.dewolf_current_commit, "quick")
     longrun_errors = _smallest_sample_per_case_group_and_tag(summary.dewolf_current_commit, "long")
+    untagged_errors = _smallest_sample_per_case_group_and_tag(summary.dewolf_current_commit, None)
 
     # retrieve all GitHub issues, group them in a default dict by 'case_group'
     github_issues_by_case_group = defaultdict(list)
@@ -64,6 +66,7 @@ def index(request):
     context = {
         "quickrun_errors": quickrun_errors,
         "longrun_errors": longrun_errors,
+        "untagged_errors": untagged_errors,
         "summary": summary,
         "issues": github_issues_by_case_group,
     }

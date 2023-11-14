@@ -6,9 +6,9 @@
             errors for commit: <code><a href="https://github.com/fkie-cad/dewolf/commits/main"
    class="text-decoration-none">{{ summary.dewolf_current_commit }}</a></code>
         </h3>
-        <p class="mt-5">
-            Errors seen in previous commit:
-        </p>
+        <h5 class="mt-5">
+            Quickrun Errors
+        </h5>
         {% if quickrun_errors %}
             <table class="table table-hover">
                 <thead>
@@ -50,9 +50,9 @@
         {% endif %}
     </div>
     <div class="container">
-        <p class="mt-5">
-            Possibly novel errors:
-        </p>
+        <h5 class="mt-5">
+            Longrun Errors
+        </h5>
         {% if longrun_errors %}
             <table class="table table-hover">
                 <thead>
@@ -91,6 +91,48 @@
             </table>
         {% else %}
             <p>No errors</p>
+        {% endif %}
+    </div>
+    <div class="container">
+        {% if untagged_errors %}
+        <h5 class="mt-5">
+            Untagged Errors
+        </h5>
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th scope="col" class="w-75">Case Group</th>
+                        <th scope="col">Size</th>
+                        <th scope="col">Count</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for failed_case in untagged_errors %}
+                        <tr onclick="window.location='{% url 'dewolf_error' failed_case.id %}';">
+                            <td>
+                                <a class="pe-3 text-decoration-none"
+                                   href="{% url 'dewolf_error' failed_case.id %}">
+                                    <code>{{ failed_case.case_group }}</code>
+                                </a>
+                                {% for issue in issues|get:failed_case.case_group %}
+                                    {% if issue.status == "open" %}
+                                        <a class="badge bg-success text-decoration-none"
+                                           href="{{ issue.html_url }}">Open #{{ issue.number }}</a>
+                                    {% elif issue.status == "in progress" %}
+                                        <a class="badge bg-warning text-decoration-none"
+                                           href="{{ issue.html_url }}">In Progress #{{ issue.number }}</a>
+                                    {% elif issue.status == "closed" %}
+                                        <a class="badge bg-danger text-decoration-none"
+                                           href="{{ issue.html_url }}">Closed #{{ issue.number }}</a>
+                                    {% endif %}
+                                {% endfor %}
+                            </td>
+                            <td>{{ failed_case.function_basic_block_count }}</td>
+                            <td>{{ failed_case.errors_per_group_count_pre_filter }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         {% endif %}
     </div>
 {% endblock content %}
