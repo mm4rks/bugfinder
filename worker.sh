@@ -182,6 +182,7 @@ check_new_commit() {
     fi
 
     last_commit_check=${current_time}
+    touch data/idle # indicate last check for new dewolf commit
 
     pushd "${dewolf_repo}"
     git checkout "${dewolf_branch}"
@@ -270,6 +271,7 @@ init_new_run () {
     local current_commit="$(git rev-parse HEAD)"
     local upstream_commit=$(git rev-parse "${dewolf_branch}"@{upstream})
     popd
+    touch data/idle # indicate last check for new dewolf commit
     
     # update and refill queue if new version
     if [ "${current_commit}" != "${upstream_commit}" ]; then
@@ -298,7 +300,6 @@ while [[ true ]]; do
     update_db "long"
     init_new_run
 
-    touch data/idle
     echo "[+] sleeping for ${rate_limit_duration}..."
     sleep ${rate_limit_duration}
 done
