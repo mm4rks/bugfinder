@@ -119,11 +119,38 @@ queue_sample_by_hash () {
     run_task ${sample_hash}
 }
 
+update_db () {
+    local tag=$1
+    echo "[*] updating filtered.sqlite3 (${tag})..."
+    # does samples.sqlite3 exists?
+    if [ ! -f "data/samples.sqlite3" ]; then
+        echo "[*] update_db (${tag}) - no samples.sqlite, nothing to do."
+        return
+    fi
+    echo "[*] getting current commit..."
+    pushd "${dewolf_repo}"
+    git checkout "${dewolf_branch}"
+    local current_commit="$(git rev-parse HEAD)"
+    popd
+    # backup filtered.sqlite3
+    if [ -f "data/filtered.sqlite3" ]; then
+        echo "[+] backing up filtered.sqlite3"
+        cp data/filtered.sqlite3 data/filtered.sqlite3.bak
+    fi
+    echo "[+] filtering and rotating samples.sqlite3"
+    source "$(pwd)/.venv/bin/activate"
+    python filter.py -i data/samples.sqlite3 -o data/filtered.sqlite3 --tag ${tag}
+    deactivate
+    mv --backup=numbered data/samples.sqlite3 data/"${tag}_${current_commit}.sqlite3"
+}
+
+
 quick_run () {
     # process crashing samples from last commit
     # samples must be in infolder and will be moved to data/samples
     echo "[+] starting quick run..."
     if [ ! -f "data/filtered.sqlite3" ]; then
+        echo "[-] no filtered.sqlite3 found. Make sure to init database."
         return
     fi
     local last_processed_commit=$(sqlite3 data/filtered.sqlite3 "SELECT dewolf_current_commit FROM summary ORDER BY id DESC LIMIT 1;") 
@@ -149,6 +176,10 @@ quick_run () {
     docker_wait_image
     echo "quick run containers:" > data/healthcheck.txt
     docker ps >> data/healthcheck.txt
+    if [ "$processed_files" -ne 0 ]; then
+        # quickrun did process files
+        update_db "quick"
+    fi
 }
 
 clear_infolder () {
@@ -235,31 +266,7 @@ long_run () {
     echo "long run containers:" > data/healthcheck.txt
     docker ps >> data/healthcheck.txt
     clear_infolder
-}
-
-update_db () {
-    local tag=$1
-    echo "[*] updating filtered.sqlite3 (${tag})..."
-    # does samples.sqlite3 exists?
-    if [ ! -f "data/samples.sqlite3" ]; then
-        echo "[*] update_db (${tag}) - no samples.sqlite, nothing to do."
-        return
-    fi
-    echo "[*] getting current commit..."
-    pushd "${dewolf_repo}"
-    git checkout "${dewolf_branch}"
-    local current_commit="$(git rev-parse HEAD)"
-    popd
-    # backup filtered.sqlite3
-    if [ -f "data/filtered.sqlite3" ]; then
-        echo "[+] backing up filtered.sqlite3"
-        cp data/filtered.sqlite3 data/filtered.sqlite3.bak
-    fi
-    echo "[+] filtering and rotating samples.sqlite3"
-    source "$(pwd)/.venv/bin/activate"
-    python filter.py -i data/samples.sqlite3 -o data/filtered.sqlite3 --tag ${tag}
-    deactivate
-    mv --backup=numbered data/samples.sqlite3 data/"${tag}_${current_commit}.sqlite3"
+    update_db "long"
 }
 
 init_new_run () {
@@ -285,6 +292,7 @@ init_new_run () {
             echo "[-] updating dewolf failed!"
             exit 1
         fi
+        clear_infolder
         refill_infolder
     else
         echo "[+] no new dewolf version" 
@@ -295,9 +303,7 @@ set -o pipefail
 
 while [[ true ]]; do
     quick_run
-    update_db "quick"
     long_run
-    update_db "long"
     init_new_run
 
     echo "[+] sleeping for ${rate_limit_duration}..."
