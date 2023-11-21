@@ -178,7 +178,10 @@ quick_run () {
     docker ps >> data/healthcheck.txt
     if [ "$processed_files" -ne 0 ]; then
         # quickrun did process files
+        echo "[*] finalizing quick run"
         update_db "quick"
+    else
+        echo "[*] quickrun did already ran?"
     fi
 }
 
