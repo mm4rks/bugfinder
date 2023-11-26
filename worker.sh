@@ -65,17 +65,17 @@ trap finish EXIT ERR
 
 filter_sample_file () {
     local file=$1
-    local size=$(wc -c < "${file}")
-    if (( ${size} > ${max_size} )); then
-        echo "[-] file too big (${size} bytes)"
-        rm ${file}
-        return 0
-    fi
+    # local size=$(wc -c < "${file}")
+    # if (( ${size} > ${max_size} )); then
+    #     echo "[-] file too big (${size} bytes)"
+    #     rm ${file}
+    #     return 0
+    # fi
 
     local file_info=$(file ${file})
     if ! echo "${file_info}" | grep -q -E "ELF|Mach-O|PE32|COFF|DOS exe|COM exe"; then
         echo "[-] file type not allowed: ${file_info}"
-        rm ${file}
+        rm "${file}"
         return 0
     fi
     return 1 # file was not filtered
