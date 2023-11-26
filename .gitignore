@@ -3,6 +3,7 @@ infolder/
 .env*
 .env.dev
 *.txt
+!requirements.txt
 *.zip
 *.crt
 *.key
