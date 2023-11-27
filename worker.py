@@ -2,6 +2,7 @@ import atexit
 import logging
 import time
 from pathlib import Path
+from typing import Iterable
 
 import docker
 from git import Repo
@@ -95,6 +96,11 @@ class DockerHandler:
         if not self.data_path.is_dir():
             raise ValueError(f"The specified data path '{self.data_path}' does not exist or is not a directory.")
 
+    @property
+    def running_workers(self):
+        containers = self.client.containers.list(filters={'ancestor': self.image_name, 'status': 'running'})
+        return len(containers)
+
     def stop_image(self) -> None:
         """
         Stop all containers for the current image.
@@ -138,6 +144,9 @@ class DockerHandler:
             mounts=[docker.types.Mount(type="bind", source=str(self.data_path), target=self.MOUNT_POINT)],
         )
         return container.id
+
+    def build(self):
+        pass
 
 
 class BugfinderWorker:
@@ -212,6 +221,12 @@ class BugfinderWorker:
         self.save_state()
         # stop runners
 
+    def process_tasks(self, tasks: set):
+        while tasks:
+            if self.docker_handler.running_workers < self.MAX_WORKERS:
+                self.docker_handler.run_task(tasks.pop())
+            else:
+                time.sleep(1)
 
 
 if __name__ == "__main__":
