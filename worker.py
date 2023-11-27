@@ -4,6 +4,7 @@ import time
 from pathlib import Path
 
 import docker
+from git import Repo
 
 # from processing import docker_utils, file_utils
 
@@ -24,57 +25,62 @@ class GitHandler:
     COMMIT_HASH_LEN = 8
 
     def __init__(self, repo_path: str | Path, dewolf_branch: str = "main"):
-        self.repo_path = Path(repo_path)
+        self._repo_path = Path(repo_path)
         self.dewolf_branch = dewolf_branch
-        self.last_commit_check = 0
+        self._last_query = 0
         self._current_upstream_commit = None
 
-        if not self.repo_path.is_dir():
-            raise ValueError(f"The specified repository path '{self.repo_path}' does not exist or is not a directory.")
+        if not self._repo_path.is_dir():
+            raise ValueError(f"The specified repository path '{self._repo_path}' does not exist or is not a directory.")
+
+        self.repo = Repo(self._repo_path)
 
     def get_current_local_commit(self) -> str:
-        commit = "sadfasdfasdfsadfsadfsadf"
+        self.repo.git.checkout(self.dewolf_branch)
+        commit = self.repo.head.commit.hexsha
+        logging.debug(f"current local commit: {commit}")
         return commit[:self.COMMIT_HASH_LEN]
 
     def _get_current_upstream_commit(self):
-        """Query upstream repository for new commit."""
-        # # Touch a file to indicate the last check
-        # with open(os.path.join(self.repo_path, 'data', 'idle'), 'w') as f:
-        #     pass
-
-        # repo = Repo(self.repo_path)
-        # repo.git.checkout(self.branch)
-        # repo.remotes.origin.fetch()
-
-        # current_commit = repo.head.commit.hexsha
-        # upstream_commit = repo.git.rev_parse(f"{self.branch}@{{upstream}}")
-
-        # if current_commit != upstream_commit:
-        #     logging.info("[+] New commit found in upstream")
-        #     return True
-        # else:
-        #     logging.info("[+] No new commit in upstream")
-        #     return False
-        commit = "sadfasdfasdfsadfsadfsadf"
+        """Query upstream repository for new commit (fetch)."""
+        self.repo.git.checkout(self.dewolf_branch)
+        self.repo.remotes.origin.fetch()
+        commit = self.repo.git.rev_parse(f"{self.dewolf_branch}@{{upstream}}")
+        logging.debug(f"current local commit: {commit}")
         return commit[:self.COMMIT_HASH_LEN]
 
-    def get_current_upstream_commit(self):
-        logging.info("Checking new commit...")
+    def _is_rate_limit_hit(self) -> bool:
+        """Return True if the query should be rate limited."""
         current_time = time.time()
-        time_diff = current_time - self.last_commit_check
+        time_diff = current_time - self._last_query
 
         if time_diff < self.RATE_LIMIT_DURATION:
-            logging.info("Skipping commit check due to rate limiting")
-            return self._current_upstream_commit
+            logging.info("Rate limit hit")
+            return True
+        return False
 
-        self._current_upstream_commit = self._get_current_upstream_commit()
-        self.last_commit_check = current_time
-        return self._get_current_upstream_commit
+    def get_current_upstream_commit(self, rate_limit: bool = True):
+        """Query upstream commit if rate limit allows it."""
+        logging.info("Checking for upstream commit...")
+        if not rate_limit or not self._is_rate_limit_hit():
+            self._current_upstream_commit = self._get_current_upstream_commit()
+            self._last_query = time.time()
+        return self._current_upstream_commit
 
-    def has_new_version(self) -> bool:
+    def has_new_version(self, rate_limit: bool = True) -> bool:
         """Return True if last upstream commit differs from current local commit."""
-        return self.get_current_local_commit() != self.get_current_upstream_commit()
+        return self.get_current_local_commit() != self.get_current_upstream_commit(rate_limit=rate_limit)
 
+    def update_local(self):
+        """Pull the latest changes from upstream."""
+        logging.info("Updating local repository with new changes from upstream.")
+        self.repo.git.checkout(self.dewolf_branch)
+        try:
+            self.repo.git.pull('origin', self.dewolf_branch)
+            logging.info("Local repository updated successfully.")
+        except Exception as e:
+            logging.error(f"Failed to update local repository: {e}")
+            raise
 
 class DockerHandler:
     COMMAND = "python decompiler/util/bugfinder/bugfinder.py /data/samples/{sample_hash} --sqlite-file /data/samples.sqlite3"
