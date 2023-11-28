@@ -5,6 +5,7 @@ import sys
 import time
 from pathlib import Path
 from typing import Iterable
+import concurrent.futures
 
 import docker
 from git import Repo
@@ -91,6 +92,7 @@ class DockerHandler:
     DATA_BASE_NAME = "samples.sqlite3"
     MOUNT_POINT = "/data"  # COMMAND depends on mount point
     COMMAND = "python decompiler/util/bugfinder/bugfinder.py /data/samples/{sample_hash} --sqlite-file /data/samples.sqlite3"
+    SIGKILL_TIME = 1
 
     def __init__(self, image_name: str, data_path: str | Path, max_time: int = 600):
         self.image_name = image_name
@@ -106,7 +108,18 @@ class DockerHandler:
     @property
     def running_workers(self):
         containers = self.client.containers.list(filters={"ancestor": self.image_name, "status": "running"})
+        logging.debug(f"running containers: {containers}")
         return len(containers)
+
+    def _stop_container(self, container):
+        """Stop a single container."""
+        try:
+            logging.info(f"Stopping container {container.short_id}...")
+            container.stop(timeout=self.SIGKILL_TIME)
+            logging.info(f"Container {container.short_id} stopped.")
+        except Exception as e:
+            logging.error(f"Error stopping container {container.short_id}: {e}")
+            raise
 
     def stop_image(self) -> None:
         """
@@ -116,9 +129,14 @@ class DockerHandler:
         containers = self.client.containers.list(filters={"ancestor": self.image_name})
         if not containers:
             logging.info(f"No containers running for image: {self.image_name}")
-        else:
-            for container in containers:
-                container.stop()
+            return
+
+        # Use ThreadPoolExecutor to stop containers concurrently
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            futures = [executor.submit(self._stop_container, container) for container in containers]
+            concurrent.futures.wait(futures)
+        time.sleep(self.SIGKILL_TIME) 
+        logging.info(f"All containers for {self.image_name} have been stopped.")
 
     def wait_image(self) -> None:
         """
@@ -134,7 +152,10 @@ class DockerHandler:
         for container in containers:
             if container.status == "running":
                 logging.info(f"Waiting for container: {container.id}")
-                container.wait()  # This will block until the container stops
+                try:
+                    container.wait()  # This will block until the container stops
+                except docker.errors.NotFound:
+                    logging.info("already gone")
             else:
                 logging.info(f"Container {container.id} is not running")
 
