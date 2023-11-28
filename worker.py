@@ -1,5 +1,7 @@
+import argparse
 import atexit
 import logging
+import sys
 import time
 from pathlib import Path
 from typing import Iterable
@@ -20,8 +22,8 @@ class DatabaseHandler:
             raise ValueError(f"The specified data path '{self.data_path}' does not exist or is not a directory.")
 
 
-
 class GitHandler:
+    """Class in charge of managing dewolf repository: check for updates by fetching upstream commits"""
     RATE_LIMIT_DURATION = 600
     COMMIT_HASH_LEN = 8
 
@@ -40,7 +42,7 @@ class GitHandler:
         self.repo.git.checkout(self.dewolf_branch)
         commit = self.repo.head.commit.hexsha
         logging.debug(f"current local commit: {commit}")
-        return commit[:self.COMMIT_HASH_LEN]
+        return commit[: self.COMMIT_HASH_LEN]
 
     def _get_current_upstream_commit(self):
         """Query upstream repository for new commit (fetch)."""
@@ -48,7 +50,7 @@ class GitHandler:
         self.repo.remotes.origin.fetch()
         commit = self.repo.git.rev_parse(f"{self.dewolf_branch}@{{upstream}}")
         logging.debug(f"current local commit: {commit}")
-        return commit[:self.COMMIT_HASH_LEN]
+        return commit[: self.COMMIT_HASH_LEN]
 
     def _is_rate_limit_hit(self) -> bool:
         """Return True if the query should be rate limited."""
@@ -77,19 +79,24 @@ class GitHandler:
         logging.info("Updating local repository with new changes from upstream.")
         self.repo.git.checkout(self.dewolf_branch)
         try:
-            self.repo.git.pull('origin', self.dewolf_branch)
+            self.repo.git.pull("origin", self.dewolf_branch)
             logging.info("Local repository updated successfully.")
         except Exception as e:
             logging.error(f"Failed to update local repository: {e}")
             raise
 
+
 class DockerHandler:
+    """Class for running bugfinder in docker containers."""
+    DATA_BASE_NAME = "samples.sqlite3"
+    MOUNT_POINT = "/data"  # COMMAND depends on mount point
     COMMAND = "python decompiler/util/bugfinder/bugfinder.py /data/samples/{sample_hash} --sqlite-file /data/samples.sqlite3"
-    MOUNT_POINT = "/data"
 
     def __init__(self, image_name: str, data_path: str | Path, max_time: int = 600):
         self.image_name = image_name
         self.data_path = Path(data_path)
+        self.samples_path = self.data_path / "samples"
+        self.sqlite_file = self.data_path / self.DATA_BASE_NAME
         self.max_time = max_time
         self.client = docker.from_env()
 
@@ -98,7 +105,7 @@ class DockerHandler:
 
     @property
     def running_workers(self):
-        containers = self.client.containers.list(filters={'ancestor': self.image_name, 'status': 'running'})
+        containers = self.client.containers.list(filters={"ancestor": self.image_name, "status": "running"})
         return len(containers)
 
     def stop_image(self) -> None:
@@ -152,23 +159,18 @@ class DockerHandler:
 class BugfinderWorker:
     base_dir = Path(__file__).parent.resolve()
 
-    IMAGE_NAME = "bugfinder-dewolf"
-    BUGFINDER_DB_NAME = "samples.sqlite3"
-    DEWOLF_REPO = base_dir / "dewolf" / "repo"
-    DEWOLF_BRANCH = "main"
     MAX_WORKERS = 8
     WORKER_TIMEOUT = 600
-    DATA_PATH = base_dir / "data"
-    SAMPLES_PATH = DATA_PATH / "samples"
-    STATE_JSON = base_dir / "data" / "state.json"
     SLEEP_TIME = 6
 
-    def __init__(self):
-        self.docker_handler = DockerHandler(self.IMAGE_NAME, self.DATA_PATH)
-        self.git_handler = GitHandler(self.DEWOLF_REPO)
+    def __init__(self, docker_handler: DockerHandler, git_handler: GitHandler):
+        self.docker_handler = docker_handler
+        self.git_handler = git_handler
+        self._samples_path = self.docker_handler.samples_path
+        self._state_file = self.docker_handler.data_path / "worker.json"
         self.quick_run_samples = set()
         self.long_run_samples = set()
-        self.all_samples = {file.name for file in self.SAMPLES_PATH.iterdir() if file.is_file()}
+        self.all_samples = {file.name for file in self._samples_path.iterdir() if file.is_file()}
         self.load_state()
 
     def load_state(self):
@@ -186,7 +188,7 @@ class BugfinderWorker:
         Rotate samples.sqlite3
         """
         logging.info("Updating database")
-        samples_db =self.DATA_PATH / self.BUGFINDER_DB_NAME 
+        samples_db = self.DATA_PATH / self.BUGFINDER_DB_NAME
         if not samples_db.is_file():
             logging.warning(f"The database {samples_db} does not exist. Nothing to update")
             return
@@ -197,15 +199,15 @@ class BugfinderWorker:
 
     def update_dewolf(self):
         logging.info("Updating dewolf")
-        pass 
+        pass
 
     def init_new_run(self):
         logging.info("Initializing new run")
-        pass 
+        pass
 
     def dispatch_runner(self):
         logging.info("Dispatching runner...")
-        pass 
+        pass
 
     def run(self):
         while True:
@@ -218,25 +220,59 @@ class BugfinderWorker:
 
     def cleanup(self):
         logging.info("Cleaning up...")
+        self.docker_handler.stop_image()  # stop runners
         self.save_state()
-        # stop runners
 
-    def process_tasks(self, tasks: set):
+    def process_tasks(self, tasks: set, tag: str):
+        """Run up to MAX_WORKERS docker containers concurrently, each processing a sample."""
+        total_tasks = len(tasks)
+        progress = 0
         while tasks:
             if self.docker_handler.running_workers < self.MAX_WORKERS:
+                # TODO write to file for Django
+                # TODO write remaining samples to file for restart
+                logging.debug(f"processing {tag}: ({progress}/{total_tasks})")
                 self.docker_handler.run_task(tasks.pop())
             else:
                 time.sleep(1)
+        self.docker_handler.wait_image()
 
 
-if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
-    worker_instance = BugfinderWorker()
+def parse_arguments():
+    base_dir = Path(__file__).parent.resolve()
+    parser = argparse.ArgumentParser(description="Argument parser for your script")
+    parser.add_argument("--image_name", type=str, default="bugfinder-dewolf", help="Name of the image")
+    parser.add_argument("--bugfinder_db_name", type=str, default="samples.sqlite3", help="Name of the BugFinder database")
+    parser.add_argument("--dewolf_repo", type=Path, default=base_dir / "dewolf" / "repo", help="Path to the DeWolf repository")
+    parser.add_argument("--dewolf_branch", type=str, default="main", help="Branch of the DeWolf repository")
+    parser.add_argument("--max_workers", type=int, default=8, help="Maximum number of workers")
+    parser.add_argument("--worker_timeout", type=int, default=600, help="Timeout for each worker in seconds")
+    parser.add_argument("--data_path", type=Path, default=base_dir / "data", help="Path to the data directory")
+    parser.add_argument("--samples_path", type=Path, default=base_dir / "data" / "samples", help="Path to the samples directory")
+    parser.add_argument("--state_json", type=Path, default=base_dir / "data" / "state.json", help="Path to the state JSON file")
+    parser.add_argument("--sleep_time", type=int, default=6, help="Sleep time in seconds")
+    parser.add_argument(
+        "--verbosity", "-v", dest="verbosity", action="count", help="Set logging verbosity, e.g., -vvv for DEBUG logging", default=0
+    )
+    args = parser.parse_args()
+    return args
+
+
+def main(args):
+    log_level = {0: logging.ERROR, 1: logging.WARNING, 2: logging.INFO, 3: logging.DEBUG}
+    logging.basicConfig(level=log_level.get(args.verbosity, logging.DEBUG), format="%(asctime)s - %(levelname)s - %(message)s")
+    git_handler = GitHandler(repo_path=args.dewolf_repo)
+    docker_handler = DockerHandler(image_name=args.image_name, data_path=args.data_path)
+    worker_instance = BugfinderWorker(docker_handler=docker_handler, git_handler=git_handler)
     atexit.register(worker_instance.cleanup)
-
     try:
         worker_instance.run()
     except KeyboardInterrupt:
         logging.info("Program interrupted by user")
     except Exception as e:
         logging.error("Unhandled exception", exc_info=e)
+
+
+if __name__ == "__main__":
+    args = parse_arguments()
+    sys.exit(main(args))
